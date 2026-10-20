@@ -1,0 +1,55 @@
+:root { --verde: #2f6b3a; --rojo: #b3261e; --gris: #6b6b6b; --borde: #d9d9d9; --fondo: #f6f7f4; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--fondo); color: #1d1d1d; }
+
+header { background: var(--verde); color: #fff; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+header h1 { margin: 0; font-size: 1.2rem; }
+.demo { font-size: .75rem; background: rgba(255, 255, 255, .2); padding: 2px 8px; border-radius: 999px; }
+
+nav { display: flex; background: #fff; border-bottom: 1px solid var(--borde); position: sticky; top: 0; z-index: 1; }
+nav a { flex: 1; padding: 12px 4px; text-align: center; text-decoration: none; color: var(--gris); border-bottom: 3px solid transparent; }
+nav a.activo { color: var(--verde); border-bottom-color: var(--verde); font-weight: 600; }
+
+main { max-width: 760px; margin: 0 auto; padding: 16px; }
+
+input, select, textarea { width: 100%; padding: 10px; font-size: 1rem; font-family: inherit; border: 1px solid var(--borde); border-radius: 8px; background: #fff; }
+label { display: block; margin: 14px 0 6px; font-weight: 600; }
+
+.filtros { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.filtros input[type=search] { flex: 1; min-width: 200px; }
+.filtros label { margin: 0; font-weight: normal; display: flex; gap: 6px; align-items: center; }
+.filtros input[type=checkbox] { width: auto; }
+.resumen { color: var(--gris); margin: 10px 0; font-size: .9rem; }
+
+.tarjeta { background: #fff; border: 1px solid var(--borde); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+.tarjeta.bajo { border-left: 5px solid var(--rojo); }
+.fila { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.nombre { font-weight: 600; }
+.cientifico { font-style: italic; color: var(--gris); font-size: .9rem; }
+.total { font-size: 1.3rem; font-weight: 700; white-space: nowrap; }
+.bajo .total { color: var(--rojo); }
+.aviso { color: var(--rojo); font-size: .85rem; margin-top: 4px; }
+.tamanos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { background: var(--fondo); border: 1px solid var(--borde); border-radius: 999px; padding: 3px 10px; font-size: .85rem; }
+
+.tipos { display: flex; gap: 8px; }
+.tipos button { flex: 1; padding: 10px; font-size: 1rem; font-family: inherit; border: 1px solid var(--borde); border-radius: 8px; background: #fff; color: inherit; cursor: pointer; }
+.tipos button.elegido { border-color: var(--verde); background: #eaf3ec; color: var(--verde); font-weight: 700; }
+.ayuda { color: var(--gris); font-size: .85rem; margin-top: 4px; }
+.dos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+button.principal { width: 100%; margin-top: 20px; padding: 14px; font-size: 1.05rem; border: 0; border-radius: 8px; background: var(--verde); color: #fff; cursor: pointer; }
+button.principal:disabled { opacity: .6; }
+.mensaje { margin-top: 14px; padding: 12px; border-radius: 8px; }
+.mensaje.ok { background: #eaf3ec; color: var(--verde); }
+.mensaje.error { background: #fbeaea; color: var(--rojo); }
+
+.tabla { overflow-x: auto; border: 1px solid var(--borde); border-radius: 10px; }
+table { width: 100%; border-collapse: collapse; background: #fff; font-size: .9rem; }
+th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--borde); }
+.num { text-align: right; white-space: nowrap; }
+
+/* En el celu la tabla se achica y esconde la columna Responsable. */
+@media (max-width: 480px) {
+  th, td { padding: 6px; font-size: .8rem; }
+  .solo-ancho { display: none; }
+}

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+  :root { --verde: #2f6b3a; --rojo: #b3261e; --gris: #6b6b6b; --borde: #d9d9d9; --fondo: #f6f7f4; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--fondo); color: #1d1d1d; }
+  header { background: var(--verde); color: #fff; padding: 12px 16px; }
+  header h1 { margin: 0; font-size: 1.2rem; }
+  nav { display: flex; background: #fff; border-bottom: 1px solid var(--borde); position: sticky; top: 0; z-index: 1; }
+  nav button { flex: 1; padding: 12px 4px; border: 0; background: none; font-size: 1rem; color: var(--gris); border-bottom: 3px solid transparent; cursor: pointer; }
+  nav button.activo { color: var(--verde); border-bottom-color: var(--verde); font-weight: 600; }
+  main { max-width: 760px; margin: 0 auto; padding: 16px; }
+  .oculto { display: none !important; }
+  input, select, textarea { width: 100%; padding: 10px; font-size: 1rem; font-family: inherit; border: 1px solid var(--borde); border-radius: 8px; background: #fff; }
+  label { display: block; margin: 14px 0 6px; font-weight: 600; }
+  .filtros { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .filtros input[type=search] { flex: 1; min-width: 200px; }
+  .filtros label { margin: 0; font-weight: normal; display: flex; gap: 6px; align-items: center; }
+  .filtros input[type=checkbox] { width: auto; }
+  .resumen { color: var(--gris); margin: 10px 0; font-size: .9rem; }
+  .tarjeta { background: #fff; border: 1px solid var(--borde); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+  .tarjeta.bajo { border-left: 5px solid var(--rojo); }
+  .fila { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .nombre { font-weight: 600; }
+  .cientifico { font-style: italic; color: var(--gris); font-size: .9rem; }
+  .total { font-size: 1.3rem; font-weight: 700; white-space: nowrap; }
+  .bajo .total { color: var(--rojo); }
+  .aviso { color: var(--rojo); font-size: .85rem; margin-top: 4px; }
+  .tamanos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip { background: var(--fondo); border: 1px solid var(--borde); border-radius: 999px; padding: 3px 10px; font-size: .85rem; }
+  .tipos { display: flex; gap: 8px; }
+  .tipos label { flex: 1; margin: 0; text-align: center; padding: 10px; border: 1px solid var(--borde); border-radius: 8px; background: #fff; font-weight: normal; cursor: pointer; }
+  .tipos input { display: none; }
+  .tipos input:checked + span { font-weight: 700; color: var(--verde); }
+  .tipos label:has(input:checked) { border-color: var(--verde); background: #eaf3ec; }
+  .ayuda { color: var(--gris); font-size: .85rem; margin-top: 4px; }
+  .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  button.principal { width: 100%; margin-top: 20px; padding: 14px; font-size: 1.05rem; border: 0; border-radius: 8px; background: var(--verde); color: #fff; cursor: pointer; }
+  button.principal:disabled { opacity: .6; }
+  .mensaje { margin-top: 14px; padding: 12px; border-radius: 8px; }
+  .mensaje.ok { background: #eaf3ec; color: var(--verde); }
+  .mensaje.error { background: #fbeaea; color: var(--rojo); }
+  table { width: 100%; border-collapse: collapse; background: #fff; font-size: .9rem; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--borde); }
+  td.num { text-align: right; white-space: nowrap; }
+  .tabla { overflow-x: auto; border: 1px solid var(--borde); border-radius: 10px; }
+  .cargando { text-align: center; color: var(--gris); padding: 40px 0; }
+</style>
+</head>
+<body>
+<header><h1>Stock del vivero</h1></header>
+<nav>
+  <button data-vista="stock" class="activo">Stock</button>
+  <button data-vista="cargar">Cargar</button>
+  <button data-vista="ultimos">Últimos</button>
+</nav>
+
+<main>
+  <div id="cargando" class="cargando">Cargando datos…</div>
+
+  <section id="stock" class="oculto">
+    <div class="filtros">
+      <input type="search" id="buscar" placeholder="Buscar especie o código">
+      <label><input type="checkbox" id="soloBajos"> Solo bajo mínimo</label>
+    </div>
+    <div id="resumen" class="resumen"></div>
+    <div id="listaStock"></div>
+  </section>
+
+  <section id="cargar" class="oculto">
+    <form id="formulario" autocomplete="off">
+      <label>Tipo de movimiento</label>
+      <div class="tipos">
+        <label><input type="radio" name="tipo" value="Entrada" checked><span>Entrada</span></label>
+        <label><input type="radio" name="tipo" value="Salida"><span>Salida</span></label>
+        <label><input type="radio" name="tipo" value="Ajuste"><span>Ajuste</span></label>
+      </div>
+      <div id="ayudaTipo" class="ayuda"></div>
+
+      <label for="especie">Especie</label>
+      <input id="especie" list="listaEspecies" placeholder="Escribí el nombre o el código" required>
+      <datalist id="listaEspecies"></datalist>
+
+      <label for="tamano">Tamaño</label>
+      <select id="tamano" required></select>
+      <div id="disponible" class="ayuda"></div>
+
+      <div class="dos">
+        <div>
+          <label for="cantidad">Cantidad</label>
+          <input id="cantidad" type="number" step="1" inputmode="numeric" required>
+        </div>
+        <div>
+          <label for="fecha">Fecha</label>
+          <input id="fecha" type="date" required>
+        </div>
+      </div>
+
+      <label for="responsable">Responsable</label>
+      <input id="responsable" placeholder="Quién hace el movimiento">
+
+      <label for="observaciones">Observaciones</label>
+      <textarea id="observaciones" rows="2" placeholder="Opcional: destino, procedencia, n.º de remito…"></textarea>
+
+      <button type="submit" class="principal" id="guardar">Guardar movimiento</button>
+      <div id="mensaje" class="mensaje oculto"></div>
+    </form>
+  </section>
+
+  <section id="ultimos" class="oculto">
+    <p class="resumen">Los últimos 30 movimientos. El historial completo está en la hoja Movimientos de la planilla.</p>
+    <div class="tabla">
+      <table>
+        <thead><tr><th>Fecha</th><th>Tipo</th><th>Especie</th><th>Tamaño</th><th class="num">Cant.</th><th>Resp.</th></tr></thead>
+        <tbody id="tablaUltimos"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+  let datos = null;
+  let vistaActual = 'stock';
+  const $ = id => document.getElementById(id);
+
+  function escapar(t) {
+    return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function etiquetaEspecie(e) { return e.comun + ' — ' + e.codigo; }
+
+  function stockDe(codigo) { return datos.stock[codigo] || {}; }
+
+  function total(codigo) { return Object.values(stockDe(codigo)).reduce((a, b) => a + b, 0); }
+
+  function cargarDatos() {
+    google.script.run
+      .withSuccessHandler(d => { datos = d; $('cargando').classList.add('oculto'); dibujarTodo(); mostrarVista(vistaActual); })
+      .withFailureHandler(e => { $('cargando').textContent = 'No se pudieron cargar los datos: ' + e.message; })
+      .obtenerDatos();
+  }
+
+  function mostrarVista(vista) {
+    vistaActual = vista;
+    document.querySelectorAll('nav button').forEach(b => b.classList.toggle('activo', b.dataset.vista === vista));
+    document.querySelectorAll('main section').forEach(s => s.classList.toggle('oculto', s.id !== vista));
+  }
+
+  function dibujarTodo() {
+    dibujarStock();
+    $('listaEspecies').innerHTML = datos.especies.map(e => '<option value="' + escapar(etiquetaEspecie(e)) + '">' + escapar(e.cientifico) + '</option>').join('');
+    const tamanoAnterior = $('tamano').value;
+    $('tamano').innerHTML = datos.tamanos.map(t => '<option>' + escapar(t) + '</option>').join('');
+    if (datos.tamanos.includes(tamanoAnterior)) $('tamano').value = tamanoAnterior;
+    $('tablaUltimos').innerHTML = datos.ultimos.length
+      ? datos.ultimos.map(m => '<tr><td>' + escapar(m.fecha) + '</td><td>' + escapar(m.tipo) + '</td><td>' + escapar(m.especie) + '</td><td>' + escapar(m.tamano) + '</td><td class="num">' + escapar(m.cantidad) + '</td><td>' + escapar(m.responsable) + '</td></tr>').join('')
+      : '<tr><td colspan="6">Todavía no hay movimientos.</td></tr>';
+    actualizarDisponible();
+  }
+
+  function dibujarStock() {
+    const texto = $('buscar').value.trim().toLowerCase();
+    const soloBajos = $('soloBajos').checked;
+    const bajoMinimo = e => e.minimo > 0 && total(e.codigo) < e.minimo;
+    const lista = datos.especies.filter(e =>
+      (!texto || (e.comun + ' ' + e.cientifico + ' ' + e.codigo).toLowerCase().includes(texto)) &&
+      (!soloBajos || bajoMinimo(e)));
+    const cantidadBajos = datos.especies.filter(bajoMinimo).length;
+    $('resumen').textContent = datos.especies.length + ' especies · ' + cantidadBajos + ' bajo el mínimo';
+
+    if (!datos.especies.length) {
+      $('listaStock').innerHTML = '<div class="tarjeta">Todavía no hay especies. Cargalas en la hoja Especies de la planilla.</div>';
+      return;
+    }
+    $('listaStock').innerHTML = lista.map(e => {
+      const porTamano = Object.entries(stockDe(e.codigo)).filter(([, n]) => n !== 0);
+      const bajo = bajoMinimo(e);
+      return '<div class="tarjeta' + (bajo ? ' bajo' : '') + '">' +
+        '<div class="fila"><div><div class="nombre">' + escapar(e.comun) + '</div><div class="cientifico">' + escapar(e.cientifico) + ' · ' + escapar(e.codigo) + '</div></div>' +
+        '<div class="total">' + total(e.codigo) + '</div></div>' +
+        (bajo ? '<div class="aviso">Por debajo del mínimo (' + e.minimo + ')</div>' : '') +
+        (porTamano.length ? '<div class="tamanos">' + porTamano.map(([t, n]) => '<span class="chip">' + escapar(t) + ': <b>' + n + '</b></span>').join('') + '</div>' : '') +
+        '</div>';
+    }).join('') || '<div class="resumen">No hay especies que coincidan.</div>';
+  }
+
+  function especieElegida() {
+    const valor = $('especie').value.trim().toLowerCase();
+    return datos.especies.find(e => etiquetaEspecie(e).toLowerCase() === valor || e.codigo.toLowerCase() === valor);
+  }
+
+  function tipoElegido() { return document.querySelector('input[name=tipo]:checked').value; }
+
+  function actualizarDisponible() {
+    const e = especieElegida();
+    $('disponible').textContent = e ? 'Hay ' + (stockDe(e.codigo)[$('tamano').value] || 0) + ' en este tamaño.' : '';
+    const ayudas = {
+      Entrada: 'Plantas que ingresan: producción propia, compras, donaciones.',
+      Salida: 'Plantas que se van: ventas, entregas, pérdidas.',
+      Ajuste: 'Para corregir después de un conteo: positivo si sobran, negativo (ej. -3) si faltan.',
+    };
+    $('ayudaTipo').textContent = ayudas[tipoElegido()];
+    $('cantidad').min = tipoElegido() === 'Ajuste' ? '' : '1';
+  }
+
+  function mostrarMensaje(texto, tipo) {
+    const m = $('mensaje');
+    m.textContent = texto;
+    m.className = 'mensaje ' + tipo;
+  }
+
+  $('formulario').addEventListener('submit', ev => {
+    ev.preventDefault();
+    const e = especieElegida();
+    if (!e) { mostrarMensaje('Elegí una especie de la lista.', 'error'); return; }
+    const mov = {
+      tipo: tipoElegido(),
+      codigo: e.codigo,
+      tamano: $('tamano').value,
+      cantidad: Number($('cantidad').value),
+      fecha: $('fecha').value,
+      responsable: $('responsable').value,
+      observaciones: $('observaciones').value,
+    };
+    try { localStorage.setItem('responsable', mov.responsable); } catch (_) {}
+    $('guardar').disabled = true;
+    google.script.run
+      .withSuccessHandler(nuevo => {
+        $('guardar').disabled = false;
+        mostrarMensaje('Guardado. Ahora hay ' + nuevo + ' de ' + e.comun + ' en ' + mov.tamano + '.', 'ok');
+        $('cantidad').value = '';
+        $('observaciones').value = '';
+        cargarDatos();
+      })
+      .withFailureHandler(err => {
+        $('guardar').disabled = false;
+        mostrarMensaje(err.message, 'error');
+      })
+      .registrarMovimiento(mov);
+  });
+
+  document.querySelectorAll('nav button').forEach(b => b.addEventListener('click', () => mostrarVista(b.dataset.vista)));
+  $('buscar').addEventListener('input', dibujarStock);
+  $('soloBajos').addEventListener('change', dibujarStock);
+  ['especie', 'tamano'].forEach(id => $(id).addEventListener('change', actualizarDisponible));
+  $('especie').addEventListener('input', actualizarDisponible);
+  document.querySelectorAll('input[name=tipo]').forEach(r => r.addEventListener('change', actualizarDisponible));
+
+  const hoy = new Date();
+  $('fecha').value = new Date(hoy.getTime() - hoy.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  try { $('responsable').value = localStorage.getItem('responsable') || ''; } catch (_) {}
+
+  cargarDatos();
+</script>
+</body>
+</html>
