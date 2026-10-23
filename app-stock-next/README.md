@@ -70,8 +70,8 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
   solo esas). De entrada se ven solo las especies **con stock**; con los filtros se elige una **región** o
   se ven **todas**; también se puede ver **solo árboles** o **solo palmeras**. Al buscar por nombre aparecen también las que no tienen stock.
 - **Cargar** (en formato **remito**):
-  1. **Datos del remito:** tipo de movimiento (Entrada, Salida o Ajuste), fecha, responsable y observaciones
-     (cliente, destino, procedencia…).
+  1. **Datos del remito:** tipo de movimiento (Entrada, Salida o Ajuste), fecha, responsable,
+     **destinatario** (opcional: cliente, obra o proveedor; se sugieren los ya usados) y observaciones.
   2. **Sumar plantas:** especie, presentación (botones), tamaño (desplegable) y cantidad, y el botón
      **+ Sumar** (o Enter). Cada planta sumada aparece en el remito, al costado en la compu y abajo en el celu.
      Si se suma algo que ya está (misma especie, presentación y tamaño), se juntan las cantidades.
@@ -83,7 +83,15 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
   aparece un renglón para escribir el tamaño a mano (ej. "5 m de altura"); los ya escritos se sugieren para
   que se escriban siempre igual. Cada tamaño escrito lleva su propio stock.
 
+  La presentación que viene elegida es **Envasado** (el orden es Envasado, Maceta, Raíz desnuda).
+
   El remito a medio armar se guarda en el navegador: si se cierra la página, al volver sigue ahí.
+- **Imprimir o descargar el remito (PDF):** al guardar aparece el enlace **Imprimir o descargar PDF**
+  (también desde el número de remito en Últimos). Abre el remito con el formato de los presupuestos de Native
+  (logo, datos de la empresa, tabla, total y lugar para las firmas) y el botón **Imprimir / Guardar PDF**:
+  en la ventana de impresión se elige la impresora o **Guardar como PDF**. Los datos de la empresa que
+  aparecen se cambian en `lib/empresa.ts`. Dice "Remito interno… no válido como factura", porque no es un
+  remito fiscal.
 - **Últimos:** los últimos 30 movimientos, con su número de remito.
 
 | Pantalla | Cómo se acomoda |
@@ -98,11 +106,14 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 |---|---|
 | `app/page.tsx` + `app/ListaStock.tsx` | Pantalla **Stock**: total por especie, presentación y tamaño, buscador y filtros. |
 | `app/cargar/` | Pantalla **Cargar**: el remito (datos, sumar plantas y guardar). |
+| `app/remitos/[numero]/` | Un remito guardado, listo para imprimir o guardar como PDF. |
+| `lib/empresa.ts` | Los datos de Native que salen en el remito impreso. |
+| `app/not-found.tsx` | Lo que se ve si se entra a algo que no existe. |
 | `app/ultimos/page.tsx` | Pantalla **Últimos**: los últimos 30 movimientos. |
 | `app/acciones.ts` | Lo que pasa en el servidor al guardar un remito (revisa cada línea otra vez). |
 | `app/layout.tsx`, `app/Navegacion.tsx` | Encabezado y pestañas. |
 | `app/globals.css` | Colores de la marca, estilos y cómo se acomoda en celu, tablet y compu. |
-| `public/`, `app/icon.svg` | Logo de Native y el ícono de la pestaña. |
+| `public/`, `app/icon.svg` | Logo de Native (crema para la app, verde para el remito impreso) y el ícono de la pestaña. |
 | `lib/stock.ts` | Reglas del stock (las salidas restan, etc.) y ayudas para la pantalla. |
 | `lib/almacen.ts` | Lee y guarda los datos en la base Neon. Crea las tablas la primera vez. Tiene las listas iniciales de presentaciones y tamaños. |
 | `lib/especies.ts` | El listado de las 151 especies (árboles nativos y palmeras), con su región y grupo. |
@@ -115,9 +126,9 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 Hay cinco tablas:
 
 - **especies**: código, nombre común, nombre científico, región (o "Exótica"), grupo (Árbol o Palmera), stock mínimo.
-- **presentaciones**: Maceta, Raíz desnuda, Envasado (y su orden).
+- **presentaciones**: Envasado, Maceta, Raíz desnuda (y su orden; la primera viene elegida al cargar).
 - **tamanos**: los tamaños y su orden.
-- **remitos**: número (`id`), fecha, tipo, responsable y observaciones de cada remito.
+- **remitos**: número (`id`), fecha, tipo, destinatario, responsable y observaciones de cada remito.
 - **movimientos**: una fila por cada línea de remito, con su presentación, tamaño (y en `tamano_detalle`, lo
   escrito a mano cuando el tamaño es "Especificar") y el número de remito (`remito_id`). Los movimientos
   cargados antes de los remitos no tienen número.

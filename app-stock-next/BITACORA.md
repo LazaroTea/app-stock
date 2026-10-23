@@ -223,8 +223,33 @@ segunda fue rechazada entera ("hay 2 y el remito necesita 10") y la línea qued�
 Celu sin desbordes. Los remitos y movimientos de prueba se borraron y la numeración volvió a empezar en 1.
 Los 3 movimientos cargados por el vivero no se tocaron. Compila sin errores.
 
+## 2026-10-23: remito en PDF, destinatario y orden de presentaciones
+
+**Pedido:** poder descargar e imprimir el remito en PDF; presentación por defecto Envasado, y el orden
+Envasado, Maceta, Raíz desnuda; destinatario opcional. Los 3 movimientos sin remito que había eran pruebas
+del vivero: no hace falta tenerlos en cuenta.
+
+**Qué se hizo**
+- Página `/remitos/[número]` con el remito armado como los presupuestos de Native: logo en verde
+  (`public/logo-native-verde.png`, hecho a partir del logo crema), lema, datos de la empresa
+  (`lib/empresa.ts`), fecha, movimiento, destinatario, responsable, observaciones, barra DESCRIPCIÓN, tabla
+  (especie, nombre científico, presentación, tamaño, cantidad), total, firmas "Entregó" y "Recibió", y la
+  aclaración "Remito interno de control de stock. Documento no válido como factura".
+- Botón **Imprimir / Guardar PDF**: abre la impresión del navegador; para descargar se elige "Guardar como
+  PDF". Al imprimir se ocultan el encabezado, las pestañas y los botones, y la hoja es A4. El nombre que propone
+  el navegador para el archivo es "Remito 000001 - Native".
+- Enlaces a esa página: al guardar un remito ("Imprimir o descargar PDF") y desde el número en Últimos.
+- Destinatario opcional: nueva columna `destinatario` en `remitos`, con sugerencias de los ya usados. Sale en
+  el remito de la pantalla y en el impreso.
+- Orden de presentaciones: Envasado, Maceta, Raíz desnuda (en el código y en la base). Envasado viene elegida.
+- Página "No encontrado" en español.
+
+**Probado** contra la base real: remito con destinatario, una línea de envasado 20Lts y otra de maceta con
+tamaño escrito a mano; la página del remito en compu y en celu; y un PDF generado con Edge en modo
+automático: sale en una hoja A4 con los colores y el formato de los presupuestos. El remito de prueba se
+borró y la numeración volvió a 1. Compila sin errores.
+
 **Pendiente**
-- [ ] Imprimir o descargar el remito (PDF) con el formato de los presupuestos.
 - [ ] Revisión del listado de especies (árboles y palmeras) por alguien del vivero.
 - [ ] ¿Sumar las otras especies exóticas de la planilla de cotizaciones y de la web (fresnos, liquidámbar,
       olivo, etc.)?

@@ -8,11 +8,14 @@ import { TIPOS, type LineaRemito, type TipoMovimiento } from '@/lib/tipos';
 export interface Resultado {
   ok: boolean;
   mensaje: string;
+  /** Número del remito guardado, para abrirlo e imprimirlo. */
+  numero?: number;
 }
 
 export interface RemitoEnviado {
   tipo: TipoMovimiento;
   fecha: string;
+  destinatario: string;
   responsable: string;
   observaciones: string;
   lineas: LineaRemito[];
@@ -33,6 +36,7 @@ export async function registrarRemito(_anterior: Resultado | null, remito: Remit
   if (!Array.isArray(remito.lineas) || remito.lineas.length === 0) {
     return { ok: false, mensaje: 'El remito está vacío: sumá al menos una planta.' };
   }
+  if (limpiar(remito.destinatario).length > 100) return { ok: false, mensaje: 'El destinatario es muy largo (máximo 100 letras).' };
   if (remito.lineas.length > MAXIMO_LINEAS) return { ok: false, mensaje: `El remito tiene más de ${MAXIMO_LINEAS} líneas.` };
 
   try {
@@ -61,6 +65,7 @@ export async function registrarRemito(_anterior: Resultado | null, remito: Remit
     const { numero, faltantes } = await guardarRemito({
       tipo,
       fecha,
+      destinatario: limpiar(remito.destinatario),
       responsable: limpiar(remito.responsable),
       observaciones: String(remito.observaciones ?? '').trim(),
       lineas,
@@ -83,6 +88,7 @@ export async function registrarRemito(_anterior: Resultado | null, remito: Remit
     const plantas = lineas.reduce((suma, l) => suma + Math.abs(l.cantidad), 0);
     return {
       ok: true,
+      numero,
       mensaje: `Remito N.º ${numeroRemito(numero)} guardado: ${lineas.length} ${lineas.length === 1 ? 'línea' : 'líneas'}, ${plantas} plantas.`,
     };
   } catch (e) {

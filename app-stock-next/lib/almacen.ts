@@ -10,8 +10,8 @@ import { ESPECIES } from './especies';
 import { cantidadConSigno, claveStock, etiquetaTamano, TAMANO_A_ESPECIFICAR } from './stock';
 import type { Especie, LineaRemito, Movimiento, Stock, TipoMovimiento } from './tipos';
 
-/** Cómo se entregan las plantas, en el orden en que se muestran. */
-export const PRESENTACIONES = ['Maceta', 'Raíz desnuda', 'Envasado'];
+/** Cómo se entregan las plantas, en el orden en que se muestran. La primera es la que viene elegida al cargar. */
+export const PRESENTACIONES = ['Envasado', 'Maceta', 'Raíz desnuda'];
 
 /**
  * Tamaños: los de la lista desplegable de la columna "Tamaño" de la planilla de cotizaciones del vivero
@@ -118,6 +118,8 @@ async function crearTablas() {
       registrado timestamptz NOT NULL DEFAULT now()
     )`,
     sql`ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS remito_id integer REFERENCES remitos (id)`,
+    // Opcional: a quién va (o de quién viene) el remito.
+    sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS destinatario text NOT NULL DEFAULT ''`,
     sql`INSERT INTO especies (codigo, comun, cientifico, region, grupo, minimo)
       SELECT * FROM json_to_recordset(${JSON.stringify(ESPECIES)}::json)
         AS x (codigo text, comun text, cientifico text, region text, grupo text, minimo integer)
@@ -187,9 +189,44 @@ export async function leerUltimos(cantidad: number): Promise<{ movimientos: Movi
 export interface RemitoNuevo {
   fecha: string;
   tipo: TipoMovimiento;
+  destinatario: string;
   responsable: string;
   observaciones: string;
   lineas: LineaRemito[];
+}
+
+/** Los destinatarios ya usados (los más recientes primero), para sugerirlos al cargar. */
+export async function leerDestinatarios(): Promise<string[]> {
+  await prepararBase();
+  const filas = await conexion()`SELECT destinatario FROM remitos WHERE destinatario <> ''
+    GROUP BY destinatario ORDER BY max(id) DESC LIMIT 200`;
+  return filas.map(f => String(f.destinatario));
+}
+
+export interface RemitoGuardado {
+  numero: number;
+  fecha: string;
+  tipo: TipoMovimiento;
+  destinatario: string;
+  responsable: string;
+  observaciones: string;
+  lineas: (LineaRemito & { comun: string; cientifico: string })[];
+}
+
+/** Un remito ya guardado, con sus líneas, para verlo o imprimirlo. Devuelve null si no existe. */
+export async function leerRemito(numero: number): Promise<RemitoGuardado | null> {
+  await prepararBase();
+  const sql = conexion();
+  const [[remito], lineas] = await Promise.all([
+    sql`SELECT id AS numero, to_char(fecha, 'YYYY-MM-DD') AS fecha, tipo, destinatario, responsable, observaciones
+        FROM remitos WHERE id = ${numero}`,
+    sql`SELECT m.codigo, m.presentacion, m.tamano, m.tamano_detalle AS "tamanoDetalle", m.cantidad,
+          e.comun, e.cientifico
+        FROM movimientos m JOIN especies e ON e.codigo = m.codigo
+        WHERE m.remito_id = ${numero} ORDER BY m.id`,
+  ]);
+  if (!remito) return null;
+  return { ...(remito as Omit<RemitoGuardado, 'lineas'>), lineas: lineas as RemitoGuardado['lineas'] };
 }
 
 /** Una combinación de especie, presentación y tamaño a la que no le alcanza el stock. */
@@ -244,8 +281,8 @@ export async function guardarRemito(r: RemitoNuevo): Promise<{ numero: number | 
        ), faltantes AS (
          SELECT * FROM con_stock WHERE habia + cambio < 0
        ), remito AS (
-         INSERT INTO remitos (fecha, tipo, responsable, observaciones)
-         SELECT $2, $3, $4, $5 WHERE NOT EXISTS (SELECT 1 FROM faltantes)
+         INSERT INTO remitos (fecha, tipo, responsable, observaciones, destinatario)
+         SELECT $2, $3, $4, $5, $6 WHERE NOT EXISTS (SELECT 1 FROM faltantes)
          RETURNING id
        ), guardadas AS (
          INSERT INTO movimientos
@@ -257,7 +294,7 @@ export async function guardarRemito(r: RemitoNuevo): Promise<{ numero: number | 
        SELECT (SELECT id FROM remito) AS numero,
               (SELECT count(*) FROM guardadas) AS lineas,
               COALESCE((SELECT json_agg(faltantes) FROM faltantes), '[]'::json) AS faltantes`,
-      [lineas, r.fecha, r.tipo, r.responsable, r.observaciones],
+      [lineas, r.fecha, r.tipo, r.responsable, r.observaciones, r.destinatario],
     ),
   ]);
   return { numero: resultado.numero ?? null, faltantes: resultado.faltantes as Faltante[] };

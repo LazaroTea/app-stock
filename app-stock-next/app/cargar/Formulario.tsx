@@ -28,6 +28,8 @@ interface Props {
   presentaciones: string[];
   tamanos: string[];
   stock: Stock;
+  /** Destinatarios ya usados, para sugerirlos. */
+  destinatarios: string[];
   hoy: string;
 }
 
@@ -36,12 +38,13 @@ const limpiar = (texto: string) => texto.trim().replace(/\s+/g, ' ');
 
 const claveLinea = (l: LineaRemito) => claveStock(l.presentacion, etiquetaTamano(l.tamano, l.tamanoDetalle));
 
-export default function Formulario({ especies, presentaciones, tamanos, stock, hoy }: Props) {
+export default function Formulario({ especies, presentaciones, tamanos, stock, destinatarios, hoy }: Props) {
   const [resultado, enviar, guardando] = useActionState(registrarRemito, null);
 
   // Datos del remito
   const [tipo, setTipo] = useState<TipoMovimiento>('Entrada');
   const [fecha, setFecha] = useState(hoy);
+  const [destinatario, setDestinatario] = useState('');
   const [responsable, setResponsable] = useState('');
   const [observaciones, setObservaciones] = useState('');
   const [lineas, setLineas] = useState<LineaRemito[]>([]);
@@ -66,21 +69,23 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, h
       if (Array.isArray(borrador?.lineas) && borrador.lineas.length) {
         setLineas(borrador.lineas);
         if (TIPOS.includes(borrador.tipo)) setTipo(borrador.tipo);
+        if (typeof borrador.destinatario === 'string') setDestinatario(borrador.destinatario);
       }
     } catch {}
   }, []);
 
   useEffect(() => {
     try {
-      if (lineas.length) localStorage.setItem(BORRADOR, JSON.stringify({ tipo, lineas }));
+      if (lineas.length) localStorage.setItem(BORRADOR, JSON.stringify({ tipo, destinatario, lineas }));
       else localStorage.removeItem(BORRADOR);
     } catch {}
-  }, [tipo, lineas]);
+  }, [tipo, destinatario, lineas]);
 
   // Después de guardar bien, el remito queda vacío para empezar otro.
   useEffect(() => {
     if (resultado?.ok) {
       setLineas([]);
+      setDestinatario('');
       setObservaciones('');
       setAviso(null);
     }
@@ -146,7 +151,7 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, h
     try {
       localStorage.setItem('responsable', responsable);
     } catch {}
-    startTransition(() => enviar({ tipo, fecha, responsable, observaciones, lineas }));
+    startTransition(() => enviar({ tipo, fecha, destinatario, responsable, observaciones, lineas }));
   }
 
   // Control de cada línea: en salidas y ajustes, que no se saque más de lo que hay.
@@ -209,11 +214,28 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, h
           </div>
         </div>
 
+        <label htmlFor="destinatario">
+          Destinatario <span className="opcional">(opcional)</span>
+        </label>
+        <input
+          id="destinatario"
+          list="lista-destinatarios"
+          placeholder={tipo === 'Entrada' ? 'Proveedor o de dónde vienen' : 'Cliente, obra o a dónde van'}
+          maxLength={100}
+          value={destinatario}
+          onChange={e => setDestinatario(e.target.value)}
+        />
+        <datalist id="lista-destinatarios">
+          {destinatarios.map(d => (
+            <option key={d} value={d} />
+          ))}
+        </datalist>
+
         <label htmlFor="observaciones">Observaciones</label>
         <textarea
           id="observaciones"
           rows={2}
-          placeholder="Opcional: cliente, destino, procedencia, n.º de remito del proveedor…"
+          placeholder="Opcional: dirección de entrega, n.º de remito del proveedor…"
           value={observaciones}
           onChange={e => setObservaciones(e.target.value)}
         />
@@ -324,8 +346,9 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, h
             <div>{fecha ? fechaLegible(fecha) : ''}</div>
           </div>
         </div>
-        {(responsable || observaciones) && (
+        {(destinatario || responsable || observaciones) && (
           <div className="remito-extra">
+            {destinatario && <div className="remito-destinatario">Destinatario: {destinatario}</div>}
             {responsable && <div>Responsable: {responsable}</div>}
             {observaciones && <div>{observaciones}</div>}
           </div>
@@ -392,7 +415,16 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, h
         >
           {guardando ? 'Guardando…' : 'Guardar movimiento'}
         </button>
-        {resultado && <div className={resultado.ok ? 'mensaje ok' : 'mensaje error'}>{resultado.mensaje}</div>}
+        {resultado && (
+          <div className={resultado.ok ? 'mensaje ok' : 'mensaje error'}>
+            {resultado.mensaje}
+            {resultado.numero !== undefined && (
+              <a className="enlace-remito" href={`/remitos/${resultado.numero}`} target="_blank" rel="noopener">
+                Imprimir o descargar PDF
+              </a>
+            )}
+          </div>
+        )}
       </aside>
     </div>
   );
