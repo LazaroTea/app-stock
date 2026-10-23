@@ -69,26 +69,37 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
   Arriba hay tres números: total de plantas, especies con stock y especies bajo el mínimo (tocándolo se ven
   solo esas). De entrada se ven solo las especies **con stock**; con los filtros se elige una **región** o
   se ven **todas**; también se puede ver **solo árboles** o **solo palmeras**. Al buscar por nombre aparecen también las que no tienen stock.
-- **Cargar:** tipo de movimiento, especie, presentación (botones), tamaño (desplegable), cantidad y fecha.
-  El tamaño no viene elegido de entrada, para que no se guarde uno por descuido. Si se elige
-  **Especificar**, aparece un renglón para escribir el tamaño a mano (ej. "5 m de altura"); los ya escritos
-  se sugieren para que se escriban siempre igual. Cada tamaño escrito lleva su propio stock.
-- **Últimos:** los últimos 30 movimientos.
+- **Cargar** (en formato **remito**):
+  1. **Datos del remito:** tipo de movimiento (Entrada, Salida o Ajuste), fecha, responsable y observaciones
+     (cliente, destino, procedencia…).
+  2. **Sumar plantas:** especie, presentación (botones), tamaño (desplegable) y cantidad, y el botón
+     **+ Sumar** (o Enter). Cada planta sumada aparece en el remito, al costado en la compu y abajo en el celu.
+     Si se suma algo que ya está (misma especie, presentación y tamaño), se juntan las cantidades.
+     Con la ✕ se quita una línea.
+  3. **Guardar movimiento:** guarda todo el remito junto y le pone un número (000001, 000002…). Si a alguna
+     línea no le alcanza el stock, se marca en rojo y no se guarda nada hasta corregirla.
+
+  El tamaño no viene elegido de entrada, para que no se sume uno por descuido. Si se elige **Especificar**,
+  aparece un renglón para escribir el tamaño a mano (ej. "5 m de altura"); los ya escritos se sugieren para
+  que se escriban siempre igual. Cada tamaño escrito lleva su propio stock.
+
+  El remito a medio armar se guarda en el navegador: si se cierra la página, al volver sigue ahí.
+- **Últimos:** los últimos 30 movimientos, con su número de remito.
 
 | Pantalla | Cómo se acomoda |
 |---|---|
 | Celu (hasta 639 px de ancho) | Pestañas abajo, al alcance del pulgar. Una tarjeta por fila. |
 | Tablet (640 a 1023 px) | Pestañas arriba, en el encabezado. Dos tarjetas por fila. |
-| Compu (1024 px o más) | Tres tarjetas por fila. En **Cargar**, un panel al costado muestra el stock de la especie elegida. |
+| Compu (1024 px o más) | Tres tarjetas por fila. En **Cargar**, el remito se arma al costado, siempre a la vista. |
 
 ## Archivos
 
 | Archivo | Qué es |
 |---|---|
 | `app/page.tsx` + `app/ListaStock.tsx` | Pantalla **Stock**: total por especie, presentación y tamaño, buscador y filtros. |
-| `app/cargar/` | Pantalla **Cargar**: formulario de entradas, salidas y ajustes. |
+| `app/cargar/` | Pantalla **Cargar**: el remito (datos, sumar plantas y guardar). |
 | `app/ultimos/page.tsx` | Pantalla **Últimos**: los últimos 30 movimientos. |
-| `app/acciones.ts` | Lo que pasa en el servidor al guardar un movimiento (validaciones incluidas). |
+| `app/acciones.ts` | Lo que pasa en el servidor al guardar un remito (revisa cada línea otra vez). |
 | `app/layout.tsx`, `app/Navegacion.tsx` | Encabezado y pestañas. |
 | `app/globals.css` | Colores de la marca, estilos y cómo se acomoda en celu, tablet y compu. |
 | `public/`, `app/icon.svg` | Logo de Native y el ícono de la pestaña. |
@@ -101,13 +112,15 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 
 ## Los datos (base Neon)
 
-Hay cuatro tablas:
+Hay cinco tablas:
 
 - **especies**: código, nombre común, nombre científico, región (o "Exótica"), grupo (Árbol o Palmera), stock mínimo.
 - **presentaciones**: Maceta, Raíz desnuda, Envasado (y su orden).
 - **tamanos**: los tamaños y su orden.
-- **movimientos**: cada entrada, salida o ajuste, con su presentación y tamaño (y en `tamano_detalle`, lo
-  escrito a mano cuando el tamaño es "Especificar").
+- **remitos**: número (`id`), fecha, tipo, responsable y observaciones de cada remito.
+- **movimientos**: una fila por cada línea de remito, con su presentación, tamaño (y en `tamano_detalle`, lo
+  escrito a mano cuando el tamaño es "Especificar") y el número de remito (`remito_id`). Los movimientos
+  cargados antes de los remitos no tienen número.
 
 El stock no se guarda: la base lo calcula sumando los movimientos.
 
@@ -117,6 +130,7 @@ El stock no se guarda: la base lo calcula sumando los movimientos.
   stock mínimo de una especie, o para **agregar un tamaño** (fila nueva en `tamanos`, con un número de
   `orden` para ubicarlo en la lista).
 - Si dos personas guardan al mismo tiempo, la base las atiende de a una, así nadie deja el stock negativo.
+  Un remito se guarda entero o no se guarda: nunca queda a medias.
 
 ### Agregar o corregir especies
 

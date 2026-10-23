@@ -7,8 +7,8 @@
 import 'server-only';
 import { neon } from '@neondatabase/serverless';
 import { ESPECIES } from './especies';
-import { claveStock, etiquetaTamano, TAMANO_A_ESPECIFICAR } from './stock';
-import type { Especie, Movimiento, Stock, TipoMovimiento } from './tipos';
+import { cantidadConSigno, claveStock, etiquetaTamano, TAMANO_A_ESPECIFICAR } from './stock';
+import type { Especie, LineaRemito, Movimiento, Stock, TipoMovimiento } from './tipos';
 
 /** Cómo se entregan las plantas, en el orden en que se muestran. */
 export const PRESENTACIONES = ['Maceta', 'Raíz desnuda', 'Envasado'];
@@ -107,6 +107,17 @@ async function crearTablas() {
     )`,
     // Lo que se escribe a mano cuando el tamaño es "Especificar" (vacío en los demás).
     sql`ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS tamano_detalle text NOT NULL DEFAULT ''`,
+    // Remitos: cada carga junta varios movimientos (líneas) bajo un número. Los movimientos de antes
+    // de los remitos quedan sin número (remito_id vacío).
+    sql`CREATE TABLE IF NOT EXISTS remitos (
+      id serial PRIMARY KEY,
+      fecha date NOT NULL,
+      tipo text NOT NULL CHECK (tipo IN ('Entrada', 'Salida', 'Ajuste')),
+      responsable text NOT NULL DEFAULT '',
+      observaciones text NOT NULL DEFAULT '',
+      registrado timestamptz NOT NULL DEFAULT now()
+    )`,
+    sql`ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS remito_id integer REFERENCES remitos (id)`,
     sql`INSERT INTO especies (codigo, comun, cientifico, region, grupo, minimo)
       SELECT * FROM json_to_recordset(${JSON.stringify(ESPECIES)}::json)
         AS x (codigo text, comun text, cientifico text, region text, grupo text, minimo integer)
@@ -165,51 +176,89 @@ export async function leerUltimos(cantidad: number): Promise<{ movimientos: Movi
   const sql = conexion();
   const [filas, [{ total }]] = await Promise.all([
     sql`SELECT id, to_char(fecha, 'YYYY-MM-DD') AS fecha, tipo, codigo, presentacion, tamano,
-          tamano_detalle AS "tamanoDetalle", cantidad, responsable, observaciones, registrado::text AS registrado
+          tamano_detalle AS "tamanoDetalle", cantidad, responsable, observaciones, registrado::text AS registrado,
+          remito_id AS remito
         FROM movimientos ORDER BY fecha DESC, id DESC LIMIT ${cantidad}`,
     sql`SELECT count(*)::int AS total FROM movimientos`,
   ]);
   return { movimientos: filas as Movimiento[], total };
 }
 
-export interface MovimientoNuevo {
+export interface RemitoNuevo {
   fecha: string;
   tipo: TipoMovimiento;
+  responsable: string;
+  observaciones: string;
+  lineas: LineaRemito[];
+}
+
+/** Una combinación de especie, presentación y tamaño a la que no le alcanza el stock. */
+export interface Faltante {
   codigo: string;
   presentacion: string;
   tamano: string;
-  /** Lo escrito a mano cuando el tamaño es "Especificar"; vacío en los demás. */
-  tamanoDetalle: string;
-  cantidad: number;
-  /** La cantidad que suma o resta al stock (negativa en las salidas). */
+  tamano_detalle: string;
+  /** Lo que había antes del remito. */
+  habia: number;
+  /** Lo que el remito suma o resta en total para esa combinación. */
   cambio: number;
-  responsable: string;
-  observaciones: string;
 }
 
 /**
- * Guarda el movimiento solo si el stock no queda negativo.
- * Devuelve cuánto había antes y si se guardó.
+ * Guarda el remito completo, todo junto o nada: si a alguna combinación de especie, presentación y tamaño
+ * no le alcanza el stock, no se guarda ninguna línea y se devuelven las que faltan.
+ * Si se guarda, devuelve el número de remito.
  */
-export async function guardarMovimiento(m: MovimientoNuevo): Promise<{ habia: number; guardado: boolean }> {
+export async function guardarRemito(r: RemitoNuevo): Promise<{ numero: number | null; faltantes: Faltante[] }> {
   await prepararBase();
   const sql = conexion();
+  const lineas = JSON.stringify(
+    r.lineas.map(l => ({
+      codigo: l.codigo,
+      presentacion: l.presentacion,
+      tamano: l.tamano,
+      tamano_detalle: l.tamanoDetalle,
+      cantidad: l.cantidad,
+      cambio: cantidadConSigno(r.tipo, l.cantidad),
+    })),
+  );
   // El candado hace que dos personas guardando al mismo tiempo se atiendan de a una,
   // así ninguna de las dos puede dejar el stock negativo.
   const [, [resultado]] = await sql.transaction([
     sql`SELECT pg_advisory_xact_lock(${CANDADO})`,
     sql.query(
-      `WITH actual AS (
-         SELECT COALESCE(SUM(${CANTIDAD_CON_SIGNO}), 0)::int AS habia
-         FROM movimientos WHERE codigo = $1 AND presentacion = $2 AND tamano = $9 AND tamano_detalle = $10
-       ), nuevo AS (
-         INSERT INTO movimientos (fecha, tipo, codigo, presentacion, tamano, tamano_detalle, cantidad, responsable, observaciones)
-         SELECT $3, $4, $1, $2, $9, $10, $5, $6, $7 FROM actual WHERE habia + $8 >= 0
+      `WITH lineas AS (
+         SELECT * FROM json_to_recordset($1::json)
+           AS x (codigo text, presentacion text, tamano text, tamano_detalle text, cantidad integer, cambio integer)
+       ), pedido AS (
+         -- Si el remito tiene dos líneas de lo mismo, se controlan sumadas.
+         SELECT codigo, presentacion, tamano, tamano_detalle, SUM(cambio)::int AS cambio
+         FROM lineas GROUP BY codigo, presentacion, tamano, tamano_detalle
+       ), con_stock AS (
+         SELECT p.*, COALESCE((
+           SELECT SUM(${CANTIDAD_CON_SIGNO}) FROM movimientos m
+           WHERE m.codigo = p.codigo AND m.presentacion = p.presentacion
+             AND m.tamano = p.tamano AND m.tamano_detalle = p.tamano_detalle
+         ), 0)::int AS habia
+         FROM pedido p
+       ), faltantes AS (
+         SELECT * FROM con_stock WHERE habia + cambio < 0
+       ), remito AS (
+         INSERT INTO remitos (fecha, tipo, responsable, observaciones)
+         SELECT $2, $3, $4, $5 WHERE NOT EXISTS (SELECT 1 FROM faltantes)
+         RETURNING id
+       ), guardadas AS (
+         INSERT INTO movimientos
+           (fecha, tipo, codigo, presentacion, tamano, tamano_detalle, cantidad, responsable, observaciones, remito_id)
+         SELECT $2, $3, l.codigo, l.presentacion, l.tamano, l.tamano_detalle, l.cantidad, $4, $5, remito.id
+         FROM lineas l CROSS JOIN remito
          RETURNING id
        )
-       SELECT habia, EXISTS (SELECT 1 FROM nuevo) AS guardado FROM actual`,
-      [m.codigo, m.presentacion, m.fecha, m.tipo, m.cantidad, m.responsable, m.observaciones, m.cambio, m.tamano, m.tamanoDetalle],
+       SELECT (SELECT id FROM remito) AS numero,
+              (SELECT count(*) FROM guardadas) AS lineas,
+              COALESCE((SELECT json_agg(faltantes) FROM faltantes), '[]'::json) AS faltantes`,
+      [lineas, r.fecha, r.tipo, r.responsable, r.observaciones],
     ),
   ]);
-  return { habia: resultado.habia, guardado: resultado.guardado };
+  return { numero: resultado.numero ?? null, faltantes: resultado.faltantes as Faltante[] };
 }

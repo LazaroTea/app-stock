@@ -31,6 +31,19 @@ export interface Movimiento {
   observaciones: string;
   /** Momento en que se cargó. */
   registrado: string;
+  /** Número de remito (vacío en los movimientos de antes de los remitos). */
+  remito: number | null;
+}
+
+/** Una línea de un remito: qué planta, cómo se entrega y cuántas. */
+export interface LineaRemito {
+  codigo: string;
+  presentacion: string;
+  tamano: string;
+  /** Lo escrito a mano cuando el tamaño es "Especificar"; vacío en los demás. */
+  tamanoDetalle: string;
+  /** Sin signo en entradas y salidas; con signo en los ajustes. */
+  cantidad: number;
 }
 
 /** { código de especie: { "presentación · tamaño": cantidad } } (ver claveStock en lib/stock.ts) */

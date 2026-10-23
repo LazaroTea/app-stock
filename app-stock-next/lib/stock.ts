@@ -64,6 +64,11 @@ export function buscarEspecie(especies: Especie[], texto: string): Especie | und
   return especies.find(e => etiquetaEspecie(e).toLowerCase() === t || e.codigo.toLowerCase() === t);
 }
 
+// 12 -> "000012"
+export function numeroRemito(numero: number): string {
+  return String(numero).padStart(6, '0');
+}
+
 // "2026-10-20" -> "20/10/2026"
 export function fechaLegible(fecha: string): string {
   const [a, m, d] = fecha.split('-');

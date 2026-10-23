@@ -1,62 +1,92 @@
 'use server';
-// Lo que se ejecuta en el servidor cuando alguien guarda un movimiento.
+// Lo que se ejecuta en el servidor cuando alguien guarda un remito.
 import { revalidatePath } from 'next/cache';
-import { guardarMovimiento, leerCatalogo } from '@/lib/almacen';
-import { buscarEspecie, cantidadConSigno, etiquetaTamano, TAMANO_A_ESPECIFICAR } from '@/lib/stock';
-import { TIPOS, type TipoMovimiento } from '@/lib/tipos';
+import { guardarRemito, leerCatalogo } from '@/lib/almacen';
+import { etiquetaTamano, numeroRemito, TAMANO_A_ESPECIFICAR } from '@/lib/stock';
+import { TIPOS, type LineaRemito, type TipoMovimiento } from '@/lib/tipos';
 
 export interface Resultado {
   ok: boolean;
   mensaje: string;
 }
 
-export async function registrarMovimiento(_anterior: Resultado | null, form: FormData): Promise<Resultado> {
-  const tipo = String(form.get('tipo')) as TipoMovimiento;
-  const presentacion = String(form.get('presentacion') ?? '');
-  const tamano = String(form.get('tamano') ?? '');
-  // Solo cuenta si el tamaño es "Especificar". Se sacan los espacios de más para que
-  // "5 m" y "5  m " sumen al mismo stock.
-  const tamanoDetalle =
-    tamano === TAMANO_A_ESPECIFICAR ? String(form.get('tamano_detalle') ?? '').trim().replace(/\s+/g, ' ') : '';
-  const cantidad = Number(form.get('cantidad'));
-  const fecha = String(form.get('fecha') ?? '');
+export interface RemitoEnviado {
+  tipo: TipoMovimiento;
+  fecha: string;
+  responsable: string;
+  observaciones: string;
+  lineas: LineaRemito[];
+}
 
+const MAXIMO_LINEAS = 200;
+
+// Saca los espacios de más para que "5 m" y "5  m " sumen al mismo stock.
+function limpiar(texto: unknown): string {
+  return String(texto ?? '').trim().replace(/\s+/g, ' ');
+}
+
+export async function registrarRemito(_anterior: Resultado | null, remito: RemitoEnviado): Promise<Resultado> {
+  const tipo = remito.tipo;
+  const fecha = String(remito.fecha ?? '');
   if (!TIPOS.includes(tipo)) return { ok: false, mensaje: 'Tipo de movimiento inválido.' };
-  if (!Number.isInteger(cantidad) || cantidad === 0) {
-    return { ok: false, mensaje: 'La cantidad tiene que ser un número entero distinto de cero.' };
-  }
-  if (tipo !== 'Ajuste' && cantidad < 0) return { ok: false, mensaje: 'En entradas y salidas la cantidad va sin signo menos.' };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return { ok: false, mensaje: 'La fecha no es válida.' };
+  if (!Array.isArray(remito.lineas) || remito.lineas.length === 0) {
+    return { ok: false, mensaje: 'El remito está vacío: sumá al menos una planta.' };
+  }
+  if (remito.lineas.length > MAXIMO_LINEAS) return { ok: false, mensaje: `El remito tiene más de ${MAXIMO_LINEAS} líneas.` };
 
   try {
     const { especies, presentaciones, tamanos } = await leerCatalogo();
-    const especie = buscarEspecie(especies, String(form.get('especie') ?? ''));
-    if (!especie) return { ok: false, mensaje: 'Elegí una especie de la lista.' };
-    if (!presentaciones.includes(presentacion)) return { ok: false, mensaje: `La presentación "${presentacion}" no existe.` };
-    if (!tamanos.includes(tamano)) return { ok: false, mensaje: 'Elegí un tamaño de la lista.' };
-    if (tamano === TAMANO_A_ESPECIFICAR && !tamanoDetalle) return { ok: false, mensaje: 'Escribí el tamaño.' };
-    if (tamanoDetalle.length > 60) return { ok: false, mensaje: 'El tamaño escrito es muy largo (máximo 60 letras).' };
-    const detalle = `${especie.comun} (${presentacion.toLowerCase()}, ${etiquetaTamano(tamano, tamanoDetalle)})`;
+    const nombre = new Map(especies.map(e => [e.codigo, e.comun]));
+    const lineas: LineaRemito[] = [];
 
-    const cambio = cantidadConSigno(tipo, cantidad);
-    const { habia, guardado } = await guardarMovimiento({
-      fecha,
+    // Se revisa línea por línea, aunque la pantalla ya lo haya controlado.
+    for (const [i, l] of remito.lineas.entries()) {
+      const n = `Línea ${i + 1}`;
+      const cantidad = Number(l.cantidad);
+      const tamano = String(l.tamano ?? '');
+      const tamanoDetalle = tamano === TAMANO_A_ESPECIFICAR ? limpiar(l.tamanoDetalle) : '';
+      if (!nombre.has(String(l.codigo))) return { ok: false, mensaje: `${n}: la especie no existe.` };
+      if (!presentaciones.includes(String(l.presentacion))) return { ok: false, mensaje: `${n}: la presentación no existe.` };
+      if (!tamanos.includes(tamano)) return { ok: false, mensaje: `${n}: el tamaño no existe.` };
+      if (tamano === TAMANO_A_ESPECIFICAR && !tamanoDetalle) return { ok: false, mensaje: `${n}: falta escribir el tamaño.` };
+      if (tamanoDetalle.length > 60) return { ok: false, mensaje: `${n}: el tamaño escrito es muy largo.` };
+      if (!Number.isInteger(cantidad) || cantidad === 0) return { ok: false, mensaje: `${n}: la cantidad no es válida.` };
+      if (tipo !== 'Ajuste' && cantidad < 0) {
+        return { ok: false, mensaje: `${n}: en entradas y salidas la cantidad va sin signo menos.` };
+      }
+      lineas.push({ codigo: String(l.codigo), presentacion: String(l.presentacion), tamano, tamanoDetalle, cantidad });
+    }
+
+    const { numero, faltantes } = await guardarRemito({
       tipo,
-      codigo: especie.codigo,
-      presentacion,
-      tamano,
-      tamanoDetalle,
-      cantidad,
-      cambio,
-      responsable: String(form.get('responsable') ?? '').trim(),
-      observaciones: String(form.get('observaciones') ?? '').trim(),
+      fecha,
+      responsable: limpiar(remito.responsable),
+      observaciones: String(remito.observaciones ?? '').trim(),
+      lineas,
     });
-    if (!guardado) return { ok: false, mensaje: `No alcanza el stock: hay ${habia} de ${detalle}.` };
+
+    if (numero === null) {
+      const detalle = faltantes
+        .map(f => {
+          const planta = `${nombre.get(f.codigo)} (${f.presentacion.toLowerCase()}, ${etiquetaTamano(f.tamano, f.tamano_detalle)})`;
+          return `${planta}: hay ${f.habia} y el remito necesita ${Math.abs(f.cambio)}`;
+        })
+        .join('; ');
+      // El stock cambió mientras se armaba el remito (alguien más cargó algo): se actualiza la pantalla
+      // para que las líneas que no alcanzan se marquen en rojo.
+      revalidatePath('/', 'layout');
+      return { ok: false, mensaje: `No se guardó nada porque no alcanza el stock. ${detalle}.` };
+    }
 
     revalidatePath('/', 'layout');
-    return { ok: true, mensaje: `Guardado. Ahora hay ${habia + cambio} de ${detalle}.` };
+    const plantas = lineas.reduce((suma, l) => suma + Math.abs(l.cantidad), 0);
+    return {
+      ok: true,
+      mensaje: `Remito N.º ${numeroRemito(numero)} guardado: ${lineas.length} ${lineas.length === 1 ? 'línea' : 'líneas'}, ${plantas} plantas.`,
+    };
   } catch (e) {
-    console.error('Error al guardar el movimiento:', e);
+    console.error('Error al guardar el remito:', e);
     return { ok: false, mensaje: 'No se pudo guardar: hubo un problema con la base de datos. Probá de nuevo en un rato.' };
   }
 }

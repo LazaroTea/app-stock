@@ -194,7 +194,37 @@ borraron. Compila sin errores.
 1 Palmera canaria y 2 Fénix enana, todas envasado 4Mts. No se tocaron. Las dos de Fénix enana son iguales:
 revisar si fue un doble envío.
 
+## 2026-10-23: carga en formato remito
+
+**Pedido:** que la carga tenga formato de remito, que se vayan sumando al costado las especies con su
+cantidad, tamaño y presentación; el botón "Guardar movimiento" pasa a "Sumar", y un botón nuevo
+"Guardar movimiento" guarda toda la carga.
+
+**Qué se hizo**
+- Pantalla Cargar en dos partes: "Datos del remito" (tipo, fecha, responsable, observaciones) y
+  "Sumar plantas" (especie, presentación, tamaño, cantidad y **+ Sumar**). Al costado (en el celu, abajo) se
+  arma el remito con el estilo de los presupuestos: título REMITO, tabla con encabezado oliva, total y el
+  botón **Guardar movimiento**.
+- Si se suma algo que ya está en el remito, se juntan las cantidades en la misma línea. Cada línea se puede
+  quitar con ✕.
+- Antes de guardar, cada línea de salida o ajuste se controla contra el stock: si no alcanza, se marca en rojo
+  ("Hay 2") y no se puede guardar.
+- **Guardar movimiento** guarda el remito entero en una sola operación: nueva tabla `remitos` (el número es
+  el `id`) y columna `remito_id` en `movimientos`. Si mientras tanto alguien sacó stock y ya no alcanza, no se
+  guarda nada, se explica qué línea falla y la pantalla se actualiza con el stock real.
+- El remito a medio armar queda guardado en el navegador (no se pierde si se cierra la página).
+- Últimos muestra el número de remito (en el celu se oculta, como el responsable).
+- Ya no está el panel de "stock de la especie elegida" de la compu: su lugar lo ocupa el remito. El stock
+  disponible se sigue viendo debajo del tamaño ("Hay 12 en maceta, 3Lts (en este remito: +5)").
+
+**Probado** contra la base real: remito de entrada con 3 líneas (dos se juntaron: 10 + 2 = 12) guardado como
+N.º 000001; salida sin stock marcada en rojo con el botón desactivado; dos pestañas guardando a la vez: la
+segunda fue rechazada entera ("hay 2 y el remito necesita 10") y la línea quedó en rojo con el stock real.
+Celu sin desbordes. Los remitos y movimientos de prueba se borraron y la numeración volvió a empezar en 1.
+Los 3 movimientos cargados por el vivero no se tocaron. Compila sin errores.
+
 **Pendiente**
+- [ ] Imprimir o descargar el remito (PDF) con el formato de los presupuestos.
 - [ ] Revisión del listado de especies (árboles y palmeras) por alguien del vivero.
 - [ ] ¿Sumar las otras especies exóticas de la planilla de cotizaciones y de la web (fresnos, liquidámbar,
       olivo, etc.)?

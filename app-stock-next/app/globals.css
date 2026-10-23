@@ -4,7 +4,7 @@
    Se diseñó primero para el celu y después se agrega lo de pantallas más grandes:
    - hasta 639px: celu (navegación abajo, una columna)
    - desde 640px: tablet (navegación arriba, dos columnas)
-   - desde 1024px: compu (grilla de tres columnas, lema de la marca y panel al costado en Cargar) */
+   - desde 1024px: compu (grilla de tres columnas, lema de la marca y el remito al costado en Cargar) */
 
 :root {
   /* Colores de la marca */
@@ -147,9 +147,48 @@ button.indicador { cursor: pointer; }
 /* ---------- Cargar ---------- */
 
 .cargar { display: grid; grid-template-columns: 1fr; gap: 24px; }
-.panel { display: none; }
-.panel h2 { margin: 0 0 4px; font-size: 1.05rem; color: var(--verde-oscuro); }
-.panel table { margin-top: 12px; }
+
+/* Títulos de sección como "DESCRIPCIÓN" en los presupuestos: barra salvia con letras blancas. */
+.seccion {
+  margin: 24px 0 4px; padding: 8px 12px; border-radius: 6px; background: var(--salvia); color: var(--blanco);
+  font-size: .85rem; font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
+}
+.formulario > .seccion:first-child { margin-top: 0; }
+
+/* "+ Sumar": botón secundario, con borde. */
+button.secundario {
+  width: 100%; margin-top: 16px; padding: 12px; font-size: 1rem; font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase;
+  border: 2px solid var(--verde); border-radius: 8px; background: var(--blanco); color: var(--verde); cursor: pointer;
+}
+button.secundario:hover { background: var(--salvia-claro); }
+
+/* El remito, con el estilo de los presupuestos de Native. */
+.remito { background: var(--blanco); border: 1px solid var(--borde); border-radius: 10px; padding: 16px; }
+.remito-cabecera { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.remito-titulo {
+  font-family: var(--fuente-titulos), sans-serif; font-size: 1.6rem; font-weight: 700;
+  color: var(--verde); text-transform: uppercase; line-height: 1;
+}
+.remito-numero { font-family: var(--fuente-titulos), sans-serif; font-size: .75rem; font-weight: 600; color: var(--verde); margin-top: 4px; }
+.remito-datos { text-align: right; color: var(--gris); font-size: .9rem; }
+.remito-extra { margin-top: 10px; color: var(--gris); font-size: .85rem; white-space: pre-wrap; }
+.remito .tabla { margin-top: 14px; }
+.remito td.vacio { color: var(--gris); text-align: center; padding: 18px 8px; }
+.remito tr.sin-stock td { background: var(--rojo-claro); }
+.tamano-linea { color: var(--gris); font-size: .8rem; }
+button.quitar {
+  border: 0; background: none; color: var(--gris); cursor: pointer; font-size: 1rem;
+  min-width: 36px; min-height: 36px; border-radius: 6px;
+}
+button.quitar:hover { background: var(--rojo-claro); color: var(--rojo); }
+/* Como el recuadro "TOTAL" de los presupuestos. */
+.remito-total {
+  display: flex; justify-content: space-between; align-items: center; margin-top: 12px;
+  padding: 10px 14px; border-radius: 6px; background: #a0a487; color: var(--blanco);
+  font-family: var(--fuente-titulos), sans-serif; letter-spacing: .06em; text-transform: uppercase;
+}
+.remito-total b { font-size: 1.1rem; color: var(--texto); text-transform: none; letter-spacing: 0; }
 
 /* ---------- Tablas ---------- */
 
@@ -201,7 +240,7 @@ tbody tr:last-child td { border-bottom: 0; }
   .filtros input[type=search] { flex: 2 1 240px; }
   .filtros select { flex: 1 1 150px; }
 
-  .formulario { max-width: 640px; }
+  .formulario, .remito { max-width: 640px; }
 }
 
 /* ---------- Compu: desde 1024px ---------- */
@@ -214,12 +253,8 @@ tbody tr:last-child td { border-bottom: 0; }
 
   .grilla { grid-template-columns: repeat(3, 1fr); }
 
-  /* Formulario a la izquierda y panel con el stock de la especie elegida a la derecha. */
-  .cargar { grid-template-columns: minmax(0, 640px) minmax(280px, 1fr); align-items: start; }
+  /* Formulario a la izquierda y el remito armándose a la derecha, siempre a la vista. */
+  .cargar { grid-template-columns: minmax(0, 1fr) minmax(380px, 480px); align-items: start; }
   .formulario { max-width: none; }
-  .panel {
-    display: block; position: sticky; top: 24px;
-    background: var(--blanco); border: 1px solid var(--borde); border-radius: 10px; padding: 16px;
-  }
-  .panel .tabla { border: 0; }
+  .remito { position: sticky; top: 24px; }
 }

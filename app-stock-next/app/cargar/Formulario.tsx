@@ -1,23 +1,27 @@
 'use client';
-import { startTransition, useActionState, useEffect, useState } from 'react';
-import { registrarMovimiento } from '../acciones';
+// Pantalla Cargar, en formato remito: arriba los datos del remito, abajo se suman las plantas una por una
+// y al costado se va armando el remito. "Guardar movimiento" guarda todo el remito junto.
+import { startTransition, useActionState, useEffect, useRef, useState } from 'react';
+import { registrarRemito } from '../acciones';
 import {
-  bajoMinimo,
   buscarEspecie,
+  cantidadConSigno,
   claveStock,
   etiquetaEspecie,
   etiquetaTamano,
-  stockPorPresentacion,
+  fechaLegible,
   TAMANO_A_ESPECIFICAR,
-  totalEspecie,
 } from '@/lib/stock';
-import { TIPOS, type Especie, type Stock, type TipoMovimiento } from '@/lib/tipos';
+import { TIPOS, type Especie, type LineaRemito, type Stock, type TipoMovimiento } from '@/lib/tipos';
 
 const AYUDAS: Record<TipoMovimiento, string> = {
   Entrada: 'Plantas que ingresan: producción propia, compras, donaciones.',
   Salida: 'Plantas que se van: ventas, entregas, pérdidas.',
   Ajuste: 'Para corregir después de un conteo: positivo si sobran, negativo (ej. -3) si faltan.',
 };
+
+// El remito a medio armar se guarda en este dispositivo, para no perderlo si se cierra la página.
+const BORRADOR = 'remito-borrador';
 
 interface Props {
   especies: Especie[];
@@ -27,41 +31,74 @@ interface Props {
   hoy: string;
 }
 
+// Saca los espacios de más para que "5 m" y "5  m " sumen al mismo stock.
+const limpiar = (texto: string) => texto.trim().replace(/\s+/g, ' ');
+
+const claveLinea = (l: LineaRemito) => claveStock(l.presentacion, etiquetaTamano(l.tamano, l.tamanoDetalle));
+
 export default function Formulario({ especies, presentaciones, tamanos, stock, hoy }: Props) {
-  const [resultado, enviar, guardando] = useActionState(registrarMovimiento, null);
+  const [resultado, enviar, guardando] = useActionState(registrarRemito, null);
+
+  // Datos del remito
   const [tipo, setTipo] = useState<TipoMovimiento>('Entrada');
-  const [especie, setEspecie] = useState('');
-  const [presentacion, setPresentacion] = useState(presentaciones[0] ?? '');
-  // Sin tamaño elegido de entrada, para que no se guarde uno por descuido.
-  const [tamano, setTamano] = useState('');
-  const [tamanoDetalle, setTamanoDetalle] = useState('');
-  const [cantidad, setCantidad] = useState('');
   const [fecha, setFecha] = useState(hoy);
   const [responsable, setResponsable] = useState('');
   const [observaciones, setObservaciones] = useState('');
+  const [lineas, setLineas] = useState<LineaRemito[]>([]);
 
-  // El responsable se recuerda en este dispositivo para no escribirlo cada vez.
+  // La planta que se está por sumar
+  const [especie, setEspecie] = useState('');
+  const [presentacion, setPresentacion] = useState(presentaciones[0] ?? '');
+  // Sin tamaño elegido de entrada, para que no se sume uno por descuido.
+  const [tamano, setTamano] = useState('');
+  const [tamanoDetalle, setTamanoDetalle] = useState('');
+  const [cantidad, setCantidad] = useState('');
+  const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
+  const campoEspecie = useRef<HTMLInputElement>(null);
+
+  const nombre = new Map(especies.map(e => [e.codigo, e.comun]));
+
+  // Al abrir: el responsable recordado y el remito a medio armar, si había.
   useEffect(() => {
     try {
       setResponsable(localStorage.getItem('responsable') ?? '');
+      const borrador = JSON.parse(localStorage.getItem(BORRADOR) ?? 'null');
+      if (Array.isArray(borrador?.lineas) && borrador.lineas.length) {
+        setLineas(borrador.lineas);
+        if (TIPOS.includes(borrador.tipo)) setTipo(borrador.tipo);
+      }
     } catch {}
   }, []);
 
-  // Después de guardar bien, se limpian la cantidad y las observaciones.
+  useEffect(() => {
+    try {
+      if (lineas.length) localStorage.setItem(BORRADOR, JSON.stringify({ tipo, lineas }));
+      else localStorage.removeItem(BORRADOR);
+    } catch {}
+  }, [tipo, lineas]);
+
+  // Después de guardar bien, el remito queda vacío para empezar otro.
   useEffect(() => {
     if (resultado?.ok) {
-      setCantidad('');
+      setLineas([]);
       setObservaciones('');
+      setAviso(null);
     }
   }, [resultado]);
 
   const especificar = tamano === TAMANO_A_ESPECIFICAR;
-  const tamanoElegido = etiquetaTamano(tamano, tamanoDetalle.trim().replace(/\s+/g, ' '));
+  const tamanoElegido = etiquetaTamano(tamano, limpiar(tamanoDetalle));
   const elegida = buscarEspecie(especies, especie);
+
+  // Lo que hay en stock y lo que ya está en este remito, para la planta que se está por sumar.
+  const enRemito = (codigo: string, clave: string) =>
+    lineas
+      .filter(l => l.codigo === codigo && claveLinea(l) === clave)
+      .reduce((suma, l) => suma + cantidadConSigno(tipo, l.cantidad), 0);
+  const claveElegida = claveStock(presentacion, tamanoElegido);
   const disponible =
-    elegida && tamano && (!especificar || tamanoDetalle.trim())
-      ? (stock[elegida.codigo]?.[claveStock(presentacion, tamanoElegido)] ?? 0)
-      : null;
+    elegida && tamano && (!especificar || limpiar(tamanoDetalle)) ? (stock[elegida.codigo]?.[claveElegida] ?? 0) : null;
+
   // Tamaños escritos a mano en otros movimientos, para sugerirlos y que se escriban siempre igual.
   const yaEspecificados = [
     ...new Set(
@@ -71,27 +108,75 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, h
         .filter(t => !tamanos.includes(t)),
     ),
   ].sort((a, b) => a.localeCompare(b, 'es'));
-  const delaEspecie = elegida ? stockPorPresentacion(stock, elegida.codigo, presentaciones, tamanos) : [];
+
+  function sumar() {
+    const detalle = especificar ? limpiar(tamanoDetalle) : '';
+    const n = Number(cantidad);
+    const error = !elegida
+      ? 'Elegí una especie de la lista.'
+      : !tamano
+        ? 'Elegí un tamaño.'
+        : especificar && !detalle
+          ? 'Escribí el tamaño.'
+          : !Number.isInteger(n) || n === 0
+            ? 'La cantidad tiene que ser un número entero distinto de cero.'
+            : tipo !== 'Ajuste' && n < 0
+              ? 'En entradas y salidas la cantidad va sin signo menos.'
+              : '';
+    if (error || !elegida) {
+      setAviso({ ok: false, texto: error });
+      return;
+    }
+    const nueva: LineaRemito = { codigo: elegida.codigo, presentacion, tamano, tamanoDetalle: detalle, cantidad: n };
+    // Si ya hay una línea igual (misma especie, presentación y tamaño), se suma a esa.
+    setLineas(actuales => {
+      const i = actuales.findIndex(l => l.codigo === nueva.codigo && claveLinea(l) === claveLinea(nueva));
+      if (i === -1) return [...actuales, nueva];
+      return actuales
+        .map((l, j) => (j === i ? { ...l, cantidad: l.cantidad + n } : l))
+        .filter(l => l.cantidad !== 0);
+    });
+    setAviso({ ok: true, texto: `Sumado al remito: ${n} ${elegida.comun} (${presentacion.toLowerCase()}, ${tamanoElegido}).` });
+    setCantidad('');
+    setEspecie('');
+    campoEspecie.current?.focus();
+  }
+
+  function guardar() {
+    try {
+      localStorage.setItem('responsable', responsable);
+    } catch {}
+    startTransition(() => enviar({ tipo, fecha, responsable, observaciones, lineas }));
+  }
+
+  // Control de cada línea: en salidas y ajustes, que no se saque más de lo que hay.
+  const filas = lineas.map(l => {
+    const clave = claveLinea(l);
+    const hay = stock[l.codigo]?.[clave] ?? 0;
+    const queda = hay + enRemito(l.codigo, clave);
+    return { linea: l, hay, sinStock: tipo !== 'Entrada' && queda < 0 };
+  });
+  const conSigno = tipo !== 'Ajuste' && lineas.some(l => l.cantidad < 0);
+  const totalPlantas = lineas.reduce((suma, l) => suma + l.cantidad, 0);
+  const problema = conSigno
+    ? 'Hay cantidades negativas: solo se permiten en los ajustes.'
+    : filas.some(f => f.sinStock)
+      ? 'Hay líneas sin stock suficiente (en rojo).'
+      : '';
 
   return (
     <div className="cargar">
-      {/* Se envía con onSubmit y no con action={...}: con "action", React reinicia el formulario después
-          de cada envío y los botones y el desplegable podían mostrar algo distinto de lo elegido. */}
       <form
         className="formulario"
         onSubmit={ev => {
           ev.preventDefault();
-          try {
-            localStorage.setItem('responsable', responsable);
-          } catch {}
-          const datos = new FormData(ev.currentTarget);
-          startTransition(() => enviar(datos));
+          sumar();
         }}
         autoComplete="off"
       >
+        <h2 className="seccion">Datos del remito</h2>
+
         <label>Tipo de movimiento</label>
-        {/* Botones (más fáciles de tocar en el celu que los radios): el tipo viaja en el campo oculto. */}
-        <input type="hidden" name="tipo" value={tipo} />
         <div className="tipos" role="radiogroup">
           {TIPOS.map(t => (
             <button
@@ -108,15 +193,41 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, h
         </div>
         <div className="ayuda">{AYUDAS[tipo]}</div>
 
+        <div className="dos">
+          <div>
+            <label htmlFor="fecha">Fecha</label>
+            <input id="fecha" type="date" value={fecha} onChange={e => setFecha(e.target.value)} required />
+          </div>
+          <div>
+            <label htmlFor="responsable">Responsable</label>
+            <input
+              id="responsable"
+              placeholder="Quién lo carga"
+              value={responsable}
+              onChange={e => setResponsable(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <label htmlFor="observaciones">Observaciones</label>
+        <textarea
+          id="observaciones"
+          rows={2}
+          placeholder="Opcional: cliente, destino, procedencia, n.º de remito del proveedor…"
+          value={observaciones}
+          onChange={e => setObservaciones(e.target.value)}
+        />
+
+        <h2 className="seccion">Sumar plantas</h2>
+
         <label htmlFor="especie">Especie</label>
         <input
           id="especie"
-          name="especie"
+          ref={campoEspecie}
           list="lista-especies"
           placeholder="Escribí el nombre o el código"
           value={especie}
           onChange={e => setEspecie(e.target.value)}
-          required
         />
         <datalist id="lista-especies">
           {especies.map(e => (
@@ -127,8 +238,6 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, h
         </datalist>
 
         <label>Presentación</label>
-        {/* Botones como en "Tipo de movimiento": la presentación viaja en el campo oculto. */}
-        <input type="hidden" name="presentacion" value={presentacion} />
         <div className="tipos" role="radiogroup" aria-label="Presentación">
           {presentaciones.map(p => (
             <button
@@ -144,20 +253,34 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, h
           ))}
         </div>
 
-        <label htmlFor="tamano">Tamaño</label>
-        <select id="tamano" name="tamano" value={tamano} onChange={e => setTamano(e.target.value)} required>
-          <option value="" disabled>
-            Elegí un tamaño
-          </option>
-          {tamanos.map(t => (
-            <option key={t}>{t}</option>
-          ))}
-        </select>
+        <div className="dos">
+          <div>
+            <label htmlFor="tamano">Tamaño</label>
+            <select id="tamano" value={tamano} onChange={e => setTamano(e.target.value)}>
+              <option value="" disabled>
+                Elegí un tamaño
+              </option>
+              {tamanos.map(t => (
+                <option key={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="cantidad">Cantidad</label>
+            <input
+              id="cantidad"
+              type="number"
+              step={1}
+              inputMode="numeric"
+              value={cantidad}
+              onChange={e => setCantidad(e.target.value)}
+            />
+          </div>
+        </div>
         {especificar && (
           <>
             <input
               id="tamano_detalle"
-              name="tamano_detalle"
               className="renglon-extra"
               aria-label="Escribí el tamaño"
               placeholder="Escribí el tamaño (ej.: 5 m de altura)"
@@ -165,7 +288,6 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, h
               maxLength={60}
               value={tamanoDetalle}
               onChange={e => setTamanoDetalle(e.target.value)}
-              required
               autoFocus
             />
             <datalist id="lista-especificados">
@@ -175,94 +297,102 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, h
             </datalist>
           </>
         )}
-        {disponible !== null && (
+        {disponible !== null && elegida && (
           <div className="ayuda">
-            Hay {disponible} en {presentacion.toLowerCase()}, {tamanoElegido}.
+            Hay {disponible} en {presentacion.toLowerCase()}, {tamanoElegido}
+            {enRemito(elegida.codigo, claveElegida) !== 0 &&
+              ` (en este remito: ${enRemito(elegida.codigo, claveElegida) > 0 ? '+' : ''}${enRemito(elegida.codigo, claveElegida)})`}
+            .
           </div>
         )}
 
-        <div className="dos">
+        <button type="submit" className="secundario">
+          + Sumar
+        </button>
+        {aviso && <div className={aviso.ok ? 'mensaje ok' : 'mensaje error'}>{aviso.texto}</div>}
+      </form>
+
+      {/* El remito que se va armando. */}
+      <aside className="remito" aria-live="polite">
+        <div className="remito-cabecera">
           <div>
-            <label htmlFor="cantidad">Cantidad</label>
-            <input
-              id="cantidad"
-              name="cantidad"
-              type="number"
-              step={1}
-              min={tipo === 'Ajuste' ? undefined : 1}
-              inputMode="numeric"
-              value={cantidad}
-              onChange={e => setCantidad(e.target.value)}
-              required
-            />
+            <div className="remito-titulo">Remito</div>
+            <div className="remito-numero">N.º se asigna al guardar</div>
           </div>
-          <div>
-            <label htmlFor="fecha">Fecha</label>
-            <input id="fecha" name="fecha" type="date" value={fecha} onChange={e => setFecha(e.target.value)} required />
+          <div className="remito-datos">
+            <div>{tipo}</div>
+            <div>{fecha ? fechaLegible(fecha) : ''}</div>
           </div>
         </div>
+        {(responsable || observaciones) && (
+          <div className="remito-extra">
+            {responsable && <div>Responsable: {responsable}</div>}
+            {observaciones && <div>{observaciones}</div>}
+          </div>
+        )}
 
-        <label htmlFor="responsable">Responsable</label>
-        <input
-          id="responsable"
-          name="responsable"
-          placeholder="Quién hace el movimiento"
-          value={responsable}
-          onChange={e => setResponsable(e.target.value)}
-        />
+        <div className="tabla">
+          <table>
+            <thead>
+              <tr>
+                <th>Especie</th>
+                <th>Presentación</th>
+                <th className="num">Cant.</th>
+                <th aria-label="Quitar"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filas.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="vacio">
+                    Todavía no sumaste plantas.
+                  </td>
+                </tr>
+              )}
+              {filas.map(({ linea, hay, sinStock }, i) => (
+                <tr key={linea.codigo + claveLinea(linea)} className={sinStock ? 'sin-stock' : undefined}>
+                  <td>
+                    {nombre.get(linea.codigo) ?? linea.codigo}
+                    {sinStock && <div className="aviso">Hay {hay}</div>}
+                  </td>
+                  <td>
+                    {linea.presentacion}
+                    <div className="tamano-linea">{etiquetaTamano(linea.tamano, linea.tamanoDetalle)}</div>
+                  </td>
+                  <td className="num">{linea.cantidad}</td>
+                  <td className="num">
+                    <button
+                      type="button"
+                      className="quitar"
+                      aria-label={`Quitar ${nombre.get(linea.codigo)}`}
+                      onClick={() => setLineas(ls => ls.filter((_, j) => j !== i))}
+                    >
+                      ✕
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-        <label htmlFor="observaciones">Observaciones</label>
-        <textarea
-          id="observaciones"
-          name="observaciones"
-          rows={2}
-          placeholder="Opcional: destino, procedencia, n.º de remito…"
-          value={observaciones}
-          onChange={e => setObservaciones(e.target.value)}
-        />
+        <div className="remito-total">
+          <span>Total</span>
+          <b>
+            {totalPlantas} {Math.abs(totalPlantas) === 1 ? 'planta' : 'plantas'}
+          </b>
+        </div>
 
-        <button type="submit" className="principal" disabled={guardando}>
+        {problema && <div className="mensaje error">{problema}</div>}
+        <button
+          type="button"
+          className="principal"
+          disabled={guardando || lineas.length === 0 || problema !== ''}
+          onClick={guardar}
+        >
           {guardando ? 'Guardando…' : 'Guardar movimiento'}
         </button>
         {resultado && <div className={resultado.ok ? 'mensaje ok' : 'mensaje error'}>{resultado.mensaje}</div>}
-      </form>
-
-      {/* Solo se ve en pantallas grandes: el stock completo de la especie elegida. */}
-      <aside className="panel" aria-live="polite">
-        {elegida ? (
-          <>
-            <h2>{elegida.comun}</h2>
-            <div className="cientifico">{elegida.cientifico}</div>
-            <div className="tabla">
-              <table>
-                <tbody>
-                  {delaEspecie.length === 0 && (
-                    <tr>
-                      <td colSpan={2}>Sin stock.</td>
-                    </tr>
-                  )}
-                  {delaEspecie.map(([clave, n]) => (
-                    <tr key={clave}>
-                      <td>{clave === claveStock(presentacion, tamanoElegido) ? <b>{clave}</b> : clave}</td>
-                      <td className="num">{n}</td>
-                    </tr>
-                  ))}
-                  <tr>
-                    <td>
-                      <b>Total</b>
-                    </td>
-                    <td className="num">
-                      <b>{totalEspecie(stock, elegida.codigo)}</b>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            {bajoMinimo(stock, elegida) && <div className="aviso">Por debajo del mínimo ({elegida.minimo})</div>}
-          </>
-        ) : (
-          <p className="resumen">Elegí una especie para ver cuántas plantas hay de cada presentación y tamaño.</p>
-        )}
       </aside>
     </div>
   );
