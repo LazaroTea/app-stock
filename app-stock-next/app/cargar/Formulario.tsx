@@ -6,6 +6,7 @@ import { registrarRemito } from '../acciones';
 import {
   buscarEspecie,
   claveStock,
+  DEPOSITOS,
   efectos,
   etiquetaEspecie,
   etiquetaLugar,
@@ -20,8 +21,10 @@ import type { Sugerencias } from '@/lib/almacen';
 import { TIPOS, type Especie, type LineaRemito, type StockPorDeposito, type TipoMovimiento } from '@/lib/tipos';
 
 const AYUDAS: Record<TipoMovimiento, string> = {
-  Entrada: 'Plantas que ingresan a un depósito: de un proveedor, de Palma Sola, producción propia.',
-  Salida: 'Plantas que salen de un depósito: ventas, entregas a clientes, envíos a Palma Sola, pérdidas.',
+  Entrada:
+    'Plantas que ingresan a un depósito: de un proveedor, de Palma Sola o de otro depósito (en ese caso se restan allá).',
+  Salida:
+    'Plantas que salen de un depósito: a clientes, a Palma Sola, pérdidas, o a otro depósito (en ese caso se suman allá).',
   Pase: 'Plantas que pasan de un depósito a otro: se restan en el de origen y se suman en el de destino.',
   Ajuste: 'Para corregir un depósito después de un conteo: positivo si sobran, negativo (ej. -3) si faltan.',
 };
@@ -229,7 +232,7 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
           ? 'Falta escribir qué proveedor es.'
           : faltaNombre(destino, destinoDetalle)
             ? 'Falta escribir qué cliente es.'
-            : tipo === 'Pase' && procedencia && procedencia === destino
+            : DEPOSITOS.includes(procedencia) && procedencia === destino
               ? 'El depósito de origen y el de destino tienen que ser distintos.'
               : '';
 

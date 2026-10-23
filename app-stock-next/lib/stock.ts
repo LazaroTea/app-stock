@@ -4,9 +4,12 @@ import type { Especie, Stock, StockPorDeposito, TipoMovimiento } from './tipos';
 
 /** Los depósitos de Native: cada uno lleva su propio stock. */
 export const DEPOSITOS = ['Benavidez', 'Pilar', 'Goya'];
-/** De dónde pueden venir las entradas y a dónde pueden ir las salidas (sin stock propio). */
-export const ORIGENES_EXTERNOS = ['Palma Sola', 'Proveedor'];
-export const DESTINOS_EXTERNOS = ['Palma Sola', 'Cliente'];
+/**
+ * De dónde pueden venir las entradas y a dónde pueden ir las salidas. Palma Sola, Proveedor y Cliente no
+ * llevan stock; si se elige un depósito, el movimiento también cambia el stock de ese depósito (ver efectos).
+ */
+export const PROCEDENCIAS_ENTRADA = ['Palma Sola', 'Goya', 'Pilar', 'Benavidez', 'Proveedor'];
+export const DESTINOS_SALIDA = ['Palma Sola', 'Goya', 'Pilar', 'Benavidez', 'Cliente'];
 /** Con estos hay que escribir cuál (nombre del proveedor o del cliente). */
 export const LUGARES_A_ESPECIFICAR = ['Proveedor', 'Cliente'];
 
@@ -22,9 +25,9 @@ export function lugaresDelTipo(tipo: TipoMovimiento): { procedencia: ReglaLugar 
   const depositoDestino = { titulo: 'Depósito de destino', opciones: DEPOSITOS, obligatorio: true };
   switch (tipo) {
     case 'Entrada':
-      return { procedencia: { titulo: 'Procedencia', opciones: ORIGENES_EXTERNOS, obligatorio: false }, destino: depositoDestino };
+      return { procedencia: { titulo: 'Procedencia', opciones: PROCEDENCIAS_ENTRADA, obligatorio: false }, destino: depositoDestino };
     case 'Salida':
-      return { procedencia: depositoOrigen, destino: { titulo: 'Destino', opciones: DESTINOS_EXTERNOS, obligatorio: false } };
+      return { procedencia: depositoOrigen, destino: { titulo: 'Destino', opciones: DESTINOS_SALIDA, obligatorio: false } };
     case 'Pase':
       return { procedencia: depositoOrigen, destino: depositoDestino };
     case 'Ajuste':
@@ -36,6 +39,8 @@ export function lugaresDelTipo(tipo: TipoMovimiento): { procedencia: ReglaLugar 
  * Qué le hace una línea de remito al stock de cada depósito:
  * la entrada suma en el destino, la salida resta en el origen, el pase resta en el origen y suma en el
  * destino, y el ajuste suma o resta (según su signo) en el depósito elegido.
+ * Si una entrada viene de un depósito, o una salida va a un depósito, se cruza como un pase: así las plantas
+ * no se cuentan dos veces.
  */
 export function efectos(
   tipo: TipoMovimiento,
@@ -44,11 +49,22 @@ export function efectos(
   cantidad: number,
 ): { deposito: string; cantidad: number }[] {
   const n = Math.abs(cantidad);
+  const esDeposito = (lugar: string) => DEPOSITOS.includes(lugar);
   switch (tipo) {
     case 'Entrada':
-      return [{ deposito: destino, cantidad: n }];
+      return esDeposito(procedencia)
+        ? [
+            { deposito: procedencia, cantidad: -n },
+            { deposito: destino, cantidad: n },
+          ]
+        : [{ deposito: destino, cantidad: n }];
     case 'Salida':
-      return [{ deposito: procedencia, cantidad: -n }];
+      return esDeposito(destino)
+        ? [
+            { deposito: procedencia, cantidad: -n },
+            { deposito: destino, cantidad: n },
+          ]
+        : [{ deposito: procedencia, cantidad: -n }];
     case 'Pase':
       return [
         { deposito: procedencia, cantidad: -n },

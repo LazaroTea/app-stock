@@ -318,7 +318,25 @@ ceibos en Benavidez. Stock: Goya 6 olivos y 5 ceibos; Pilar −2 olivos; Benavid
 7 ceibos. Últimos mostró el pase en dos filas (−4 Goya, +4 Pilar) y el remito impreso los depósitos. Celu sin
 desbordes. Los 4 remitos de prueba se borraron (base en cero, próximo remito 000001). Compila sin errores.
 
+## 2026-10-23: depósitos en procedencia y destino
+
+**Pedido:** que en Procedencia aparezcan también Goya, Pilar y Benavidez (no solo Palma Sola y Proveedor).
+También: poder emitir remitos aunque no haya stock (ya estaba así desde el cambio anterior; se confirmó en la
+versión publicada que no queda ningún bloqueo, solo el aviso "queda en −N").
+
+**Qué se hizo**
+- Procedencia de una Entrada: Palma Sola, Goya, Pilar, Benavidez, Proveedor (la lista original del vivero).
+  Destino de una Salida: Palma Sola, Goya, Pilar, Benavidez, Cliente.
+- Si la procedencia de una entrada o el destino de una salida es un depósito, el stock se cruza como en un pase
+  (resta en uno, suma en el otro), para no contar las plantas dos veces. Origen y destino tienen que ser
+  distintos.
+
+**Probado:** las reglas con casos de ejemplo (entrada de Pilar a Goya: −4 Pilar, +4 Goya; salida de Goya a
+Benavidez: −2 Goya, +2 Benavidez; entrada de proveedor y salida a cliente sin cambios) y los desplegables en
+pantalla, sin guardar nada en la base. Compila sin errores.
+
 **Pendiente**
+- [ ] Más adelante: revisar si se vuelve a limitar por stock (el usuario lo quiere probar después).
 - [ ] Revisión del listado de especies (árboles, palmeras y frutales) por alguien del vivero.
 - [ ] ¿Sumar las otras especies exóticas de la planilla de cotizaciones y de la web (fresnos, liquidámbar,
       olivo, etc.)?

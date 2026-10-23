@@ -2,7 +2,14 @@
 // Lo que se ejecuta en el servidor cuando alguien guarda un remito.
 import { revalidatePath } from 'next/cache';
 import { guardarRemito, leerCatalogo } from '@/lib/almacen';
-import { LUGARES_A_ESPECIFICAR, lugaresDelTipo, numeroRemito, TAMANO_A_ESPECIFICAR, type ReglaLugar } from '@/lib/stock';
+import {
+  DEPOSITOS,
+  LUGARES_A_ESPECIFICAR,
+  lugaresDelTipo,
+  numeroRemito,
+  TAMANO_A_ESPECIFICAR,
+  type ReglaLugar,
+} from '@/lib/stock';
 import { TIPOS, type LineaRemito, type TipoMovimiento } from '@/lib/tipos';
 
 export interface Resultado {
@@ -62,8 +69,8 @@ export async function registrarRemito(_anterior: Resultado | null, remito: Remit
   if (typeof procedencia === 'string') return { ok: false, mensaje: procedencia };
   const destino = revisarLugar(reglas.destino, remito.destino, remito.destinoDetalle);
   if (typeof destino === 'string') return { ok: false, mensaje: destino };
-  if (tipo === 'Pase' && procedencia.lugar === destino.lugar) {
-    return { ok: false, mensaje: 'En un pase, el depósito de origen y el de destino tienen que ser distintos.' };
+  if (DEPOSITOS.includes(procedencia.lugar) && procedencia.lugar === destino.lugar) {
+    return { ok: false, mensaje: 'El depósito de origen y el de destino tienen que ser distintos.' };
   }
 
   try {

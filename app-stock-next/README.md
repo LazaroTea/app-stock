@@ -81,13 +81,17 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 
      | Tipo | De dónde | A dónde | Qué hace con el stock |
      |---|---|---|---|
-     | **Entrada** | Procedencia (opcional): Palma Sola o Proveedor | Depósito de destino | Suma en el depósito |
-     | **Salida** | Depósito de origen | Destino (opcional): Palma Sola o Cliente | Resta en el depósito |
+     | **Entrada** | Procedencia (opcional): Palma Sola, Goya, Pilar, Benavidez o Proveedor | Depósito de destino | Suma en el depósito (*) |
+     | **Salida** | Depósito de origen | Destino (opcional): Palma Sola, Goya, Pilar, Benavidez o Cliente | Resta en el depósito (*) |
      | **Pase** | Depósito de origen | Depósito de destino | Resta en el origen y suma en el destino |
      | **Ajuste** | — | Depósito | Suma o resta (cantidad con signo) |
 
+     (*) Si la procedencia de una entrada o el destino de una salida es un **depósito**, el stock se cruza
+     igual que en un pase: resta en un depósito y suma en el otro, así las plantas no se cuentan dos veces.
+     El depósito de origen y el de destino tienen que ser distintos.
+
      Si se elige Proveedor o Cliente, aparece un renglón para escribir cuál (se sugieren los ya usados).
-     Los depósitos y lugares están en `lib/stock.ts` (`DEPOSITOS`, `ORIGENES_EXTERNOS`, `DESTINOS_EXTERNOS`).
+     Los depósitos y lugares están en `lib/stock.ts` (`DEPOSITOS`, `PROCEDENCIAS_ENTRADA`, `DESTINOS_SALIDA`).
   2. **Sumar plantas:** especie, presentación (botones), tamaño (desplegable) y cantidad, y el botón
      **+ Sumar** (o Enter). Cada planta sumada aparece en el remito, al costado en la compu y abajo en el celu.
      Si se suma algo que ya está (misma especie, presentación y tamaño), se juntan las cantidades.
