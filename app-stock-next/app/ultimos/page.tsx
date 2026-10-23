@@ -1,18 +1,15 @@
-import { leerDatos } from '@/lib/almacen';
+import { leerCatalogo, leerUltimos } from '@/lib/almacen';
 import { fechaLegible } from '@/lib/stock';
 
 export const dynamic = 'force-dynamic';
 
 export default async function PaginaUltimos() {
-  const datos = await leerDatos();
-  const nombres = new Map(datos.especies.map(e => [e.codigo, e.comun]));
-  const ultimos = [...datos.movimientos]
-    .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.id - a.id)
-    .slice(0, 30);
+  const [{ especies }, { movimientos: ultimos, total }] = await Promise.all([leerCatalogo(), leerUltimos(30)]);
+  const nombres = new Map(especies.map(e => [e.codigo, e.comun]));
 
   return (
     <section>
-      <p className="resumen">Los últimos 30 movimientos de {datos.movimientos.length} en total.</p>
+      <p className="resumen">Los últimos {ultimos.length} movimientos de {total} en total.</p>
       <div className="tabla">
         <table>
           <thead>
@@ -29,7 +26,7 @@ export default async function PaginaUltimos() {
             {ultimos.map(m => (
               <tr key={m.id}>
                 <td>{fechaLegible(m.fecha)}</td>
-                <td>{m.tipo}</td>
+                <td className={`tipo-${m.tipo}`}>{m.tipo}</td>
                 <td>{nombres.get(m.codigo) ?? m.codigo}</td>
                 <td>{m.tamano}</td>
                 <td className="num">{m.cantidad}</td>

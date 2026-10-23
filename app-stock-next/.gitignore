@@ -2,6 +2,6 @@ node_modules/
 .next/
 next-env.d.ts
 *.tsbuildinfo
-# Los datos se generan solos la primera vez que se abre la app.
-data/stock.json
-data/stock.json.tmp
+# Credenciales de la base de datos: nunca se suben a GitHub.
+.env
+.env*.local

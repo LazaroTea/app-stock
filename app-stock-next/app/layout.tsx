@@ -7,18 +7,21 @@ export const metadata: Metadata = {
   description: 'Control de stock de árboles nativos',
 };
 
-export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#2f6b3a' };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
       <body>
         <header>
-          <h1>Stock del vivero</h1>
-          <span className="demo">Datos de prueba</span>
+          <div className="contenedor encabezado">
+            <h1>Stock del vivero</h1>
+            {/* En el celu la navegación va abajo (ver globals.css); en pantallas grandes, acá arriba. */}
+            <Navegacion />
+            <span className="demo">Datos de prueba</span>
+          </div>
         </header>
-        <Navegacion />
-        <main>{children}</main>
+        <main className="contenedor">{children}</main>
       </body>
     </html>
   );

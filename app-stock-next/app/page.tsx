@@ -1,11 +1,10 @@
-import { leerDatos } from '@/lib/almacen';
-import { calcularStock } from '@/lib/stock';
+import { leerCatalogo, leerStock } from '@/lib/almacen';
 import ListaStock from './ListaStock';
 
 // Siempre leer los datos al momento, nunca mostrar una copia vieja.
 export const dynamic = 'force-dynamic';
 
 export default async function PaginaStock() {
-  const datos = await leerDatos();
-  return <ListaStock especies={datos.especies} tamanos={datos.tamanos} stock={calcularStock(datos.movimientos)} />;
+  const [{ especies, tamanos }, stock] = await Promise.all([leerCatalogo(), leerStock()]);
+  return <ListaStock especies={especies} tamanos={tamanos} stock={stock} />;
 }

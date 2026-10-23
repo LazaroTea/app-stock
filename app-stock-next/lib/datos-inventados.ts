@@ -1,5 +1,5 @@
 // Datos de ejemplo INVENTADOS para probar la app. No son datos reales del vivero.
-// Se usan solo la primera vez, cuando todavía no existe data/stock.json.
+// Se cargan en la base de datos solo la primera vez, cuando las tablas están vacías.
 import { cantidadConSigno } from './stock';
 import type { Datos, Especie, Movimiento, TipoMovimiento } from './tipos';
 

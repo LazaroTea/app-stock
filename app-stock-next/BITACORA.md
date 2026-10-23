@@ -31,5 +31,58 @@
 - En el celu, la tabla de últimos movimientos cortaba la cantidad: ahora achica la letra y esconde la columna
   Responsable en pantallas chicas.
 
+## 2026-10-23: diseño responsive
+
+**Pedido:** que la app se adapte bien a cualquier pantalla.
+
+**Problema:** en la compu, la app era una columna angosta de celu en el medio, con las pestañas estiradas
+de punta a punta de la pantalla.
+
+**Qué se hizo** (diseño pensado primero para el celu, con dos cortes: 640 px y 1024 px)
+- **Celu:** pestañas fijas abajo, al alcance del pulgar. Botones y campos de al menos 44 px de alto,
+  para tocarlos con el dedo.
+- **Tablet:** las pestañas pasan al encabezado verde. Tarjetas en dos columnas.
+- **Compu:** tarjetas en tres columnas, todo dentro de un ancho máximo de 1200 px. En **Cargar**, panel al
+  costado con el stock de la especie elegida en cada tamaño.
+- Nuevos indicadores arriba del stock: total de plantas, especies y especies bajo el mínimo. Tocar este
+  último filtra la lista (reemplaza la casilla "Solo bajo mínimo").
+- En **Últimos**, las entradas se muestran en verde y las salidas en rojo.
+
+**Probado** en 1280 px (compu), 768 px (tablet), 375 px y 320 px (celu): sin desbordes horizontales en
+ninguna pantalla, y guardar un movimiento sigue funcionando.
+
+**Notas**
+- Se buscó un skill de diseño: el recomendado es **frontend-design** (de Anthropic). Se instala desde la
+  tarjeta que ofrece Claude; este cambio se hizo sin él.
+- En Windows, `npm` está bloqueado por PowerShell: se usa `npm.cmd` (anotado en el README).
+- Si el servidor de prueba muestra "404" o la página sin estilos, hay que borrar la carpeta `.next`.
+
+## 2026-10-23: base de datos Neon (para Vercel)
+
+**Problema:** al publicarla en Vercel daba "Application error". La app guardaba los datos en un archivo
+(`data/stock.json`), y en Vercel no se pueden escribir archivos.
+
+**Decisión:** base de datos **Neon** (Postgres), conectada desde el panel de Vercel. Se eligió porque Vercel
+la configura sola y tiene plan gratis.
+
+**Qué se hizo**
+- Credenciales en `.env.local` (solo en la compu; `.gitignore` ignora los archivos `.env`).
+- Conector `@neondatabase/serverless` (1.2.0), que funciona bien en Vercel.
+- `lib/almacen.ts` reescrito: tablas `especies`, `tamanos` y `movimientos`. La primera vez que se abre la
+  app las crea y carga los datos inventados, solo si están vacías.
+- El stock lo calcula la base (suma de movimientos), y ya no se leen todos los movimientos para mostrarlo.
+- Al guardar: un "candado" de la base atiende de a un movimiento por vez, para que nadie deje el stock negativo
+  (antes era un candado en memoria, que en Vercel no sirve porque corren varias copias de la app).
+- Si la base falla, el formulario muestra un mensaje en lugar de romperse.
+- La fecha de hoy se calcula con la hora de Argentina (Vercel corre en hora UTC).
+- Se borraron `data/stock.json` y el código del archivo JSON.
+
+**Probado** contra la base real: se crearon las tablas, se cargaron 23 especies, 4 tamaños y 127 movimientos,
+y el stock dio igual que antes (1.519 plantas). Se rechazó una salida sin stock y se guardó una correcta.
+El movimiento de prueba se borró después. `npm run build` compila sin errores.
+
 **Pendiente**
-- [ ] Más adelante: publicarla en internet y pasar los datos a una base de datos online para usarla desde el celu.
+- [ ] Subir los cambios a GitHub y confirmar que Vercel la publica sin error.
+- [ ] Revisar en Vercel que el Root Directory sea `app-stock-next` y que exista `DATABASE_URL`.
+- [ ] **Agregar inicio de sesión**: hoy cualquiera con el link puede cargar movimientos.
+- [ ] Cambiar la contraseña de la base en Neon (quedó escrita en el chat) y actualizar `.env.local`.

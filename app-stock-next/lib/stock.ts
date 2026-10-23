@@ -1,21 +1,13 @@
 // Cálculos que se usan tanto en el servidor como en la pantalla.
-// El stock nunca se guarda: siempre se calcula sumando los movimientos.
-import type { Especie, Movimiento, Stock, TipoMovimiento } from './tipos';
+// El stock nunca se guarda: la base de datos lo calcula sumando los movimientos (ver lib/almacen.ts).
+import type { Especie, Stock, TipoMovimiento } from './tipos';
 
 // Las salidas restan, las entradas suman y los ajustes van con su signo (+ o -).
+// La misma regla está escrita en SQL en lib/almacen.ts: si cambia una, hay que cambiar la otra.
 export function cantidadConSigno(tipo: TipoMovimiento, cantidad: number): number {
   if (tipo === 'Salida') return -Math.abs(cantidad);
   if (tipo === 'Entrada') return Math.abs(cantidad);
   return cantidad;
-}
-
-export function calcularStock(movimientos: Movimiento[]): Stock {
-  const stock: Stock = {};
-  for (const m of movimientos) {
-    stock[m.codigo] ??= {};
-    stock[m.codigo][m.tamano] = (stock[m.codigo][m.tamano] ?? 0) + cantidadConSigno(m.tipo, m.cantidad);
-  }
-  return stock;
 }
 
 export function totalEspecie(stock: Stock, codigo: string): number {

@@ -1,17 +1,17 @@
-import { leerDatos } from '@/lib/almacen';
-import { calcularStock } from '@/lib/stock';
+import { leerCatalogo, leerStock } from '@/lib/almacen';
 import Formulario from './Formulario';
 
 export const dynamic = 'force-dynamic';
 
 export default async function PaginaCargar() {
-  const datos = await leerDatos();
+  const [{ especies, tamanos }, stock] = await Promise.all([leerCatalogo(), leerStock()]);
   return (
     <Formulario
-      especies={datos.especies}
-      tamanos={datos.tamanos}
-      stock={calcularStock(datos.movimientos)}
-      hoy={new Date().toLocaleDateString('sv-SE')}
+      especies={especies}
+      tamanos={tamanos}
+      stock={stock}
+      // Vercel corre en hora UTC: la fecha de hoy se calcula con la hora de Argentina.
+      hoy={new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' })}
     />
   );
 }

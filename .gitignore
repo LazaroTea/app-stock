@@ -1,3 +1,6 @@
 node_modules/
 .next/
 .claude/
+# Credenciales: nunca se suben a GitHub.
+.env
+.env*.local

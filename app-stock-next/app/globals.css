@@ -1,27 +1,102 @@
-:root { --verde: #2f6b3a; --rojo: #b3261e; --gris: #6b6b6b; --borde: #d9d9d9; --fondo: #f6f7f4; }
+/* Estilos de la app. Se diseñó primero para el celu y después se agrega lo de pantallas más grandes:
+   - hasta 639px: celu (navegación abajo, una columna)
+   - desde 640px: tablet (navegación arriba, dos columnas)
+   - desde 1024px: compu (grilla de tres columnas y panel al costado en Cargar) */
+
+:root {
+  --verde: #2f6b3a;
+  --verde-claro: #eaf3ec;
+  --rojo: #b3261e;
+  --rojo-claro: #fbeaea;
+  --gris: #5f6360;
+  --borde: #d9ddd8;
+  --fondo: #f6f7f4;
+  --blanco: #fff;
+  --alto-nav: 60px;
+}
+
 * { box-sizing: border-box; }
-body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--fondo); color: #1d1d1d; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--fondo);
+  color: #1d1d1d;
+  /* Lugar para la barra de navegación fija de abajo en el celu. */
+  padding-bottom: calc(var(--alto-nav) + env(safe-area-inset-bottom));
+}
 
-header { background: var(--verde); color: #fff; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-header h1 { margin: 0; font-size: 1.2rem; }
-.demo { font-size: .75rem; background: rgba(255, 255, 255, .2); padding: 2px 8px; border-radius: 999px; }
+.contenedor { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+main.contenedor { padding-top: 16px; padding-bottom: 24px; }
 
-nav { display: flex; background: #fff; border-bottom: 1px solid var(--borde); position: sticky; top: 0; z-index: 1; }
-nav a { flex: 1; padding: 12px 4px; text-align: center; text-decoration: none; color: var(--gris); border-bottom: 3px solid transparent; }
-nav a.activo { color: var(--verde); border-bottom-color: var(--verde); font-weight: 600; }
+/* ---------- Encabezado y navegación ---------- */
 
-main { max-width: 760px; margin: 0 auto; padding: 16px; }
+header { background: var(--verde); color: var(--blanco); }
+.encabezado { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; }
+header h1 { margin: 0; font-size: 1.15rem; white-space: nowrap; }
+.demo { font-size: .75rem; background: rgba(255, 255, 255, .2); padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
 
-input, select, textarea { width: 100%; padding: 10px; font-size: 1rem; font-family: inherit; border: 1px solid var(--borde); border-radius: 8px; background: #fff; }
+/* Celu: barra fija abajo, fácil de alcanzar con el pulgar. */
+nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+  display: flex; height: calc(var(--alto-nav) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--blanco); border-top: 1px solid var(--borde);
+}
+nav a {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  text-decoration: none; color: var(--gris); font-size: .95rem; border-top: 3px solid transparent;
+}
+nav a.activo { color: var(--verde); border-top-color: var(--verde); font-weight: 600; }
+
+/* ---------- Formularios ---------- */
+
+input, select, textarea {
+  width: 100%; min-height: 44px; padding: 10px; font-size: 1rem; font-family: inherit;
+  border: 1px solid var(--borde); border-radius: 8px; background: var(--blanco); color: inherit;
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, nav a:focus-visible {
+  outline: 3px solid rgba(47, 107, 58, .35); outline-offset: 1px;
+}
 label { display: block; margin: 14px 0 6px; font-weight: 600; }
+.ayuda { color: var(--gris); font-size: .85rem; margin-top: 4px; }
+.dos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
-.filtros { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-.filtros input[type=search] { flex: 1; min-width: 200px; }
-.filtros label { margin: 0; font-weight: normal; display: flex; gap: 6px; align-items: center; }
-.filtros input[type=checkbox] { width: auto; }
+.tipos { display: flex; gap: 8px; }
+.tipos button {
+  flex: 1; min-height: 44px; padding: 10px; font-size: 1rem; font-family: inherit;
+  border: 1px solid var(--borde); border-radius: 8px; background: var(--blanco); color: inherit; cursor: pointer;
+}
+.tipos button.elegido { border-color: var(--verde); background: var(--verde-claro); color: var(--verde); font-weight: 700; }
+
+button.principal {
+  width: 100%; margin-top: 20px; padding: 14px; font-size: 1.05rem; font-family: inherit;
+  border: 0; border-radius: 8px; background: var(--verde); color: var(--blanco); cursor: pointer;
+}
+button.principal:disabled { opacity: .6; }
+.mensaje { margin-top: 14px; padding: 12px; border-radius: 8px; }
+.mensaje.ok { background: var(--verde-claro); color: var(--verde); }
+.mensaje.error { background: var(--rojo-claro); color: var(--rojo); }
+
+/* ---------- Stock ---------- */
+
 .resumen { color: var(--gris); margin: 10px 0; font-size: .9rem; }
 
-.tarjeta { background: #fff; border: 1px solid var(--borde); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+.indicadores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.indicador {
+  background: var(--blanco); border: 1px solid var(--borde); border-radius: 10px; padding: 10px;
+  text-align: left; font-family: inherit; color: inherit;
+}
+.indicador .valor { display: block; font-size: 1.4rem; font-weight: 700; }
+.indicador .nombre-indicador { display: block; color: var(--gris); font-size: .8rem; }
+button.indicador { cursor: pointer; }
+.indicador.alerta .valor { color: var(--rojo); }
+.indicador.alerta.activo { border-color: var(--rojo); background: var(--rojo-claro); }
+
+.filtros { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.filtros input[type=search] { flex: 1; min-width: 0; }
+
+.grilla { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.tarjeta { background: var(--blanco); border: 1px solid var(--borde); border-radius: 10px; padding: 12px; }
 .tarjeta.bajo { border-left: 5px solid var(--rojo); }
 .fila { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
 .nombre { font-weight: 600; }
@@ -32,24 +107,69 @@ label { display: block; margin: 14px 0 6px; font-weight: 600; }
 .tamanos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .chip { background: var(--fondo); border: 1px solid var(--borde); border-radius: 999px; padding: 3px 10px; font-size: .85rem; }
 
-.tipos { display: flex; gap: 8px; }
-.tipos button { flex: 1; padding: 10px; font-size: 1rem; font-family: inherit; border: 1px solid var(--borde); border-radius: 8px; background: #fff; color: inherit; cursor: pointer; }
-.tipos button.elegido { border-color: var(--verde); background: #eaf3ec; color: var(--verde); font-weight: 700; }
-.ayuda { color: var(--gris); font-size: .85rem; margin-top: 4px; }
-.dos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-button.principal { width: 100%; margin-top: 20px; padding: 14px; font-size: 1.05rem; border: 0; border-radius: 8px; background: var(--verde); color: #fff; cursor: pointer; }
-button.principal:disabled { opacity: .6; }
-.mensaje { margin-top: 14px; padding: 12px; border-radius: 8px; }
-.mensaje.ok { background: #eaf3ec; color: var(--verde); }
-.mensaje.error { background: #fbeaea; color: var(--rojo); }
+/* ---------- Cargar ---------- */
+
+.cargar { display: grid; grid-template-columns: 1fr; gap: 24px; }
+.panel { display: none; }
+.panel h2 { margin: 0 0 4px; font-size: 1.05rem; }
+.panel table { margin-top: 12px; }
+
+/* ---------- Últimos ---------- */
 
 .tabla { overflow-x: auto; border: 1px solid var(--borde); border-radius: 10px; }
-table { width: 100%; border-collapse: collapse; background: #fff; font-size: .9rem; }
+table { width: 100%; border-collapse: collapse; background: var(--blanco); font-size: .9rem; }
 th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--borde); }
+tbody tr:last-child td { border-bottom: 0; }
 .num { text-align: right; white-space: nowrap; }
+.tipo-Salida { color: var(--rojo); }
+.tipo-Entrada { color: var(--verde); }
 
 /* En el celu la tabla se achica y esconde la columna Responsable. */
 @media (max-width: 480px) {
   th, td { padding: 6px; font-size: .8rem; }
   .solo-ancho { display: none; }
+}
+
+/* ---------- Tablet: desde 640px ---------- */
+
+@media (min-width: 640px) {
+  body { padding-bottom: 0; }
+  main.contenedor { padding-top: 24px; }
+
+  /* La navegación sube al encabezado, como pestañas. */
+  .encabezado { min-height: 60px; }
+  nav {
+    position: static; height: auto; padding: 0; background: none; border: 0;
+    align-self: stretch; flex: 1; justify-content: center; gap: 4px;
+  }
+  nav a {
+    flex: 0 1 auto; padding: 0 18px; color: rgba(255, 255, 255, .8);
+    border-top: 0; border-bottom: 3px solid transparent;
+  }
+  nav a:hover { color: var(--blanco); }
+  nav a.activo { color: var(--blanco); border-bottom-color: var(--blanco); }
+
+  .indicadores { gap: 12px; }
+  .indicador { padding: 14px; }
+  .indicador .valor { font-size: 1.7rem; }
+  .indicador .nombre-indicador { font-size: .85rem; }
+
+  .grilla { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+
+  .formulario { max-width: 640px; }
+}
+
+/* ---------- Compu: desde 1024px ---------- */
+
+@media (min-width: 1024px) {
+  .grilla { grid-template-columns: repeat(3, 1fr); }
+
+  /* Formulario a la izquierda y panel con el stock de la especie elegida a la derecha. */
+  .cargar { grid-template-columns: minmax(0, 640px) minmax(280px, 1fr); align-items: start; }
+  .formulario { max-width: none; }
+  .panel {
+    display: block; position: sticky; top: 24px;
+    background: var(--blanco); border: 1px solid var(--borde); border-radius: 10px; padding: 16px;
+  }
+  .panel .tabla { border: 0; }
 }
