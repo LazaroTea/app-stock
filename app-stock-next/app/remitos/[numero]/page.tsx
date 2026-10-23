@@ -71,11 +71,6 @@ export default async function PaginaRemito({ params }: Props) {
               <span>Responsable:</span> {remito.responsable}
             </div>
           )}
-          {remito.observaciones && (
-            <div>
-              <span>Observaciones:</span> {remito.observaciones}
-            </div>
-          )}
         </section>
 
         <div className="documento-barra">
@@ -104,6 +99,13 @@ export default async function PaginaRemito({ params }: Props) {
             ))}
           </tbody>
         </table>
+
+        {/* Las observaciones van debajo del detalle y antes del total. */}
+        {remito.observaciones && (
+          <div className="documento-observaciones">
+            <span>Observaciones:</span> {remito.observaciones}
+          </div>
+        )}
 
         <div className="documento-total">
           <span>Total:</span>

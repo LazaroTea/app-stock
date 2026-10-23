@@ -346,11 +346,10 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, d
             <div>{fecha ? fechaLegible(fecha) : ''}</div>
           </div>
         </div>
-        {(destinatario || responsable || observaciones) && (
+        {(destinatario || responsable) && (
           <div className="remito-extra">
             {destinatario && <div className="remito-destinatario">Destinatario: {destinatario}</div>}
             {responsable && <div>Responsable: {responsable}</div>}
-            {observaciones && <div>{observaciones}</div>}
           </div>
         )}
 
@@ -398,6 +397,9 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, d
             </tbody>
           </table>
         </div>
+
+        {/* Como en el remito impreso: las observaciones debajo del detalle y antes del total. */}
+        {observaciones && <div className="remito-observaciones">Observaciones: {observaciones}</div>}
 
         <div className="remito-total">
           <span>Total</span>

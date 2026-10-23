@@ -88,7 +88,8 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
   El remito a medio armar se guarda en el navegador: si se cierra la página, al volver sigue ahí.
 - **Imprimir o descargar el remito (PDF):** al guardar aparece el enlace **Imprimir o descargar PDF**
   (también desde el número de remito en Últimos). Abre el remito con el formato de los presupuestos de Native
-  (logo, datos de la empresa, tabla, total y lugar para las firmas) y el botón **Imprimir / Guardar PDF**:
+  (logo, datos de la empresa, tabla, observaciones debajo del detalle, total y lugar para las firmas) y el
+  botón **Imprimir / Guardar PDF**:
   en la ventana de impresión se elige la impresora o **Guardar como PDF**. Los datos de la empresa que
   aparecen se cambian en `lib/empresa.ts`. Dice "Remito interno… no válido como factura", porque no es un
   remito fiscal.

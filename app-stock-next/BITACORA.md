@@ -249,10 +249,26 @@ tamaño escrito a mano; la página del remito en compu y en celu; y un PDF gener
 automático: sale en una hoja A4 con los colores y el formato de los presupuestos. El remito de prueba se
 borró y la numeración volvió a 1. Compila sin errores.
 
+## 2026-10-23: observaciones debajo del detalle
+
+**Pedido:** que las observaciones vayan debajo del detalle y antes del total.
+
+**Qué se hizo:** en el remito impreso y en el remito que se arma en Cargar, las observaciones pasaron de los
+datos de arriba a un bloque entre la tabla y el total.
+
+**Probado:** PDF generado con Edge sobre un remito de prueba con observaciones, y el orden en Cargar.
+El remito de prueba (000003) se borró. Para ese momento el vivero ya había guardado los remitos 000001 y
+000002, que no se tocaron; la numeración se acomodó para que el próximo sea el 000003.
+
+**Plan acordado para más adelante (usuarios):** cuando se agregue el inicio de sesión, cada persona tendrá su
+usuario y el campo **Responsable** del remito se completará solo con el usuario que inició sesión (hoy se
+recuerda el último nombre escrito en cada dispositivo).
+
 **Pendiente**
 - [ ] Revisión del listado de especies (árboles y palmeras) por alguien del vivero.
 - [ ] ¿Sumar las otras especies exóticas de la planilla de cotizaciones y de la web (fresnos, liquidámbar,
       olivo, etc.)?
 - [ ] Subir estos cambios a GitHub y confirmar que Vercel la publica sin error.
-- [ ] **Agregar inicio de sesión**: hoy cualquiera con el link puede cargar movimientos.
+- [ ] **Agregar usuarios e inicio de sesión**: hoy cualquiera con el link puede cargar movimientos. El
+      Responsable del remito tiene que salir del usuario que inició sesión.
 - [ ] Cambiar la contraseña de la base en Neon (quedó escrita en el chat) y actualizar `.env.local`.
