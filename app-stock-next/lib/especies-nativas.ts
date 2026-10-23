@@ -8,7 +8,8 @@
 // (agrega las que falten en la base; las que ya existen no se tocan, salvo la región si estaba vacía).
 //
 // El código tiene que ser único y no se cambia una vez que la especie tiene movimientos.
-// "minimo" es el stock mínimo para el aviso (0 = sin aviso).
+// "minimo" es el stock mínimo para el aviso (0 = sin aviso). Por ahora ninguna tiene: se cargan desde
+// el panel de Neon cuando el vivero los defina.
 import type { Especie } from './tipos';
 
 function especie(codigo: string, comun: string, cientifico: string, region: string, minimo = 0): Especie {
@@ -16,30 +17,30 @@ function especie(codigo: string, comun: string, cientifico: string, region: stri
 }
 
 export const ESPECIES_NATIVAS: Especie[] = [
-  // Las primeras 23: las de los datos de prueba originales (con su stock mínimo).
-  especie('ALG', 'Algarrobo blanco', 'Prosopis alba', 'Chaco, Espinal', 50),
-  especie('ALN', 'Algarrobo negro', 'Prosopis nigra', 'Chaco, Espinal', 30),
-  especie('ANC', 'Anchico colorado', 'Parapiptadenia rigida', 'Selva paranaense', 10),
-  especie('ARR', 'Arrayán', 'Blepharocalyx salicifolius', 'Selva paranaense, Yungas, Delta y ribera', 10),
-  especie('CEI', 'Ceibo', 'Erythrina crista-galli', 'Delta y ribera', 20),
-  especie('CHL', 'Chal-chal', 'Allophylus edulis', 'Selva paranaense, Yungas, Delta y ribera', 15),
-  especie('CHN', 'Chañar', 'Geoffroea decorticans', 'Chaco, Monte, Espinal', 20),
-  especie('COR', 'Coronillo', 'Scutia buxifolia', 'Espinal, Pampa', 15),
-  especie('CUR', 'Curupí', 'Sapium haematospermum', 'Delta y ribera', 10),
-  especie('ESP', 'Espinillo', 'Vachellia caven', 'Espinal, Chaco', 30),
-  especie('ING', 'Ingá', 'Inga uruguensis', 'Delta y ribera, Selva paranaense', 10),
-  especie('JAC', 'Jacarandá', 'Jacaranda mimosifolia', 'Yungas', 15),
-  especie('LAP', 'Lapacho rosado', 'Handroanthus impetiginosus', 'Yungas, Chaco', 20),
-  especie('MOL', 'Molle', 'Schinus longifolius', 'Espinal, Pampa', 20),
-  especie('PAL', 'Palo borracho', 'Ceiba speciosa', 'Selva paranaense, Chaco', 10),
-  especie('PIT', 'Pitanga', 'Eugenia uniflora', 'Selva paranaense, Delta y ribera', 20),
-  especie('QBL', 'Quebracho blanco', 'Aspidosperma quebracho-blanco', 'Chaco, Monte', 15),
-  especie('QCO', 'Quebracho colorado chaqueño', 'Schinopsis balansae', 'Chaco', 10),
-  especie('SAU', 'Sauce criollo', 'Salix humboldtiana', 'Delta y ribera', 25),
-  especie('SDT', 'Sombra de toro', 'Jodina rhombifolia', 'Espinal, Chaco', 10),
-  especie('TAL', 'Tala', 'Celtis tala', 'Espinal, Pampa, Chaco', 40),
-  especie('TIM', 'Timbó', 'Enterolobium contortisiliquum', 'Chaco, Selva paranaense, Yungas', 15),
-  especie('TIP', 'Tipa', 'Tipuana tipu', 'Yungas', 25),
+  // Las primeras 23: las que estaban desde el principio.
+  especie('ALG', 'Algarrobo blanco', 'Prosopis alba', 'Chaco, Espinal'),
+  especie('ALN', 'Algarrobo negro', 'Prosopis nigra', 'Chaco, Espinal'),
+  especie('ANC', 'Anchico colorado', 'Parapiptadenia rigida', 'Selva paranaense'),
+  especie('ARR', 'Arrayán', 'Blepharocalyx salicifolius', 'Selva paranaense, Yungas, Delta y ribera'),
+  especie('CEI', 'Ceibo', 'Erythrina crista-galli', 'Delta y ribera'),
+  especie('CHL', 'Chal-chal', 'Allophylus edulis', 'Selva paranaense, Yungas, Delta y ribera'),
+  especie('CHN', 'Chañar', 'Geoffroea decorticans', 'Chaco, Monte, Espinal'),
+  especie('COR', 'Coronillo', 'Scutia buxifolia', 'Espinal, Pampa'),
+  especie('CUR', 'Curupí', 'Sapium haematospermum', 'Delta y ribera'),
+  especie('ESP', 'Espinillo', 'Vachellia caven', 'Espinal, Chaco'),
+  especie('ING', 'Ingá', 'Inga uruguensis', 'Delta y ribera, Selva paranaense'),
+  especie('JAC', 'Jacarandá', 'Jacaranda mimosifolia', 'Yungas'),
+  especie('LAP', 'Lapacho rosado', 'Handroanthus impetiginosus', 'Yungas, Chaco'),
+  especie('MOL', 'Molle', 'Schinus longifolius', 'Espinal, Pampa'),
+  especie('PAL', 'Palo borracho', 'Ceiba speciosa', 'Selva paranaense, Chaco'),
+  especie('PIT', 'Pitanga', 'Eugenia uniflora', 'Selva paranaense, Delta y ribera'),
+  especie('QBL', 'Quebracho blanco', 'Aspidosperma quebracho-blanco', 'Chaco, Monte'),
+  especie('QCO', 'Quebracho colorado chaqueño', 'Schinopsis balansae', 'Chaco'),
+  especie('SAU', 'Sauce criollo', 'Salix humboldtiana', 'Delta y ribera'),
+  especie('SDT', 'Sombra de toro', 'Jodina rhombifolia', 'Espinal, Chaco'),
+  especie('TAL', 'Tala', 'Celtis tala', 'Espinal, Pampa, Chaco'),
+  especie('TIM', 'Timbó', 'Enterolobium contortisiliquum', 'Chaco, Selva paranaense, Yungas'),
+  especie('TIP', 'Tipa', 'Tipuana tipu', 'Yungas'),
 
   // Yungas
   especie('ALI', 'Aliso del cerro', 'Alnus acuminata', 'Yungas'),

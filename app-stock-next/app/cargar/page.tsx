@@ -4,10 +4,11 @@ import Formulario from './Formulario';
 export const dynamic = 'force-dynamic';
 
 export default async function PaginaCargar() {
-  const [{ especies, tamanos }, stock] = await Promise.all([leerCatalogo(), leerStock()]);
+  const [{ especies, presentaciones, tamanos }, stock] = await Promise.all([leerCatalogo(), leerStock()]);
   return (
     <Formulario
       especies={especies}
+      presentaciones={presentaciones}
       tamanos={tamanos}
       stock={stock}
       // Vercel corre en hora UTC: la fecha de hoy se calcula con la hora de Argentina.

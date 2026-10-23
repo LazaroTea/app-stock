@@ -18,7 +18,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <h1>Stock del vivero</h1>
             {/* En el celu la navegación va abajo (ver globals.css); en pantallas grandes, acá arriba. */}
             <Navegacion />
-            <span className="demo">Datos de prueba</span>
           </div>
         </header>
         <main className="contenedor">{children}</main>

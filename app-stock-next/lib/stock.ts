@@ -10,6 +10,24 @@ export function cantidadConSigno(tipo: TipoMovimiento, cantidad: number): number
   return cantidad;
 }
 
+// El stock se lleva por presentación y tamaño juntos: "Maceta · 3Lts".
+export function claveStock(presentacion: string, tamano: string): string {
+  return `${presentacion} · ${tamano}`;
+}
+
+// Las combinaciones de presentación y tamaño que tienen stock (distinto de cero), en orden.
+export function stockPorPresentacion(
+  stock: Stock,
+  codigo: string,
+  presentaciones: string[],
+  tamanos: string[],
+): [clave: string, cantidad: number][] {
+  return presentaciones
+    .flatMap(p => tamanos.map(t => claveStock(p, t)))
+    .map(clave => [clave, stock[codigo]?.[clave] ?? 0] as [string, number])
+    .filter(([, n]) => n !== 0);
+}
+
 export function totalEspecie(stock: Stock, codigo: string): number {
   return Object.values(stock[codigo] ?? {}).reduce((a, b) => a + b, 0);
 }

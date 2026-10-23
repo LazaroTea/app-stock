@@ -33,7 +33,6 @@ main.contenedor { padding-top: 16px; padding-bottom: 24px; }
 header { background: var(--verde); color: var(--blanco); }
 .encabezado { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; }
 header h1 { margin: 0; font-size: 1.15rem; white-space: nowrap; }
-.demo { font-size: .75rem; background: rgba(255, 255, 255, .2); padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
 
 /* Celu: barra fija abajo, fácil de alcanzar con el pulgar. */
 nav {
@@ -107,7 +106,7 @@ button.indicador { cursor: pointer; }
 .total { font-size: 1.3rem; font-weight: 700; white-space: nowrap; }
 .bajo .total { color: var(--rojo); }
 .aviso { color: var(--rojo); font-size: .85rem; margin-top: 4px; }
-.tamanos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.presentaciones { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .chip { background: var(--fondo); border: 1px solid var(--borde); border-radius: 999px; padding: 3px 10px; font-size: .85rem; }
 
 /* ---------- Cargar ---------- */

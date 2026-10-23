@@ -1,7 +1,7 @@
 'use client';
-import { useActionState, useEffect, useState } from 'react';
+import { startTransition, useActionState, useEffect, useState } from 'react';
 import { registrarMovimiento } from '../acciones';
-import { bajoMinimo, buscarEspecie, etiquetaEspecie, totalEspecie } from '@/lib/stock';
+import { bajoMinimo, buscarEspecie, claveStock, etiquetaEspecie, stockPorPresentacion, totalEspecie } from '@/lib/stock';
 import { TIPOS, type Especie, type Stock, type TipoMovimiento } from '@/lib/tipos';
 
 const AYUDAS: Record<TipoMovimiento, string> = {
@@ -12,16 +12,19 @@ const AYUDAS: Record<TipoMovimiento, string> = {
 
 interface Props {
   especies: Especie[];
+  presentaciones: string[];
   tamanos: string[];
   stock: Stock;
   hoy: string;
 }
 
-export default function Formulario({ especies, tamanos, stock, hoy }: Props) {
+export default function Formulario({ especies, presentaciones, tamanos, stock, hoy }: Props) {
   const [resultado, enviar, guardando] = useActionState(registrarMovimiento, null);
   const [tipo, setTipo] = useState<TipoMovimiento>('Entrada');
   const [especie, setEspecie] = useState('');
-  const [tamano, setTamano] = useState(tamanos[0] ?? '');
+  const [presentacion, setPresentacion] = useState(presentaciones[0] ?? '');
+  // Sin tamaño elegido de entrada, para que no se guarde uno por descuido.
+  const [tamano, setTamano] = useState('');
   const [cantidad, setCantidad] = useState('');
   const [fecha, setFecha] = useState(hoy);
   const [responsable, setResponsable] = useState('');
@@ -43,23 +46,27 @@ export default function Formulario({ especies, tamanos, stock, hoy }: Props) {
   }, [resultado]);
 
   const elegida = buscarEspecie(especies, especie);
-  const disponible = elegida ? (stock[elegida.codigo]?.[tamano] ?? 0) : null;
+  const disponible = elegida && tamano ? (stock[elegida.codigo]?.[claveStock(presentacion, tamano)] ?? 0) : null;
+  const delaEspecie = elegida ? stockPorPresentacion(stock, elegida.codigo, presentaciones, tamanos) : [];
 
   return (
     <div className="cargar">
+      {/* Se envía con onSubmit y no con action={...}: con "action", React reinicia el formulario después
+          de cada envío y los botones y el desplegable podían mostrar algo distinto de lo elegido. */}
       <form
         className="formulario"
-        action={form => {
+        onSubmit={ev => {
+          ev.preventDefault();
           try {
             localStorage.setItem('responsable', responsable);
           } catch {}
-          enviar(form);
+          const datos = new FormData(ev.currentTarget);
+          startTransition(() => enviar(datos));
         }}
         autoComplete="off"
       >
         <label>Tipo de movimiento</label>
-        {/* Botones en vez de radios: React reinicia los radios del formulario después de cada envío
-            y podía quedar marcado otro tipo que el que se ve. El tipo viaja en el campo oculto. */}
+        {/* Botones (más fáciles de tocar en el celu que los radios): el tipo viaja en el campo oculto. */}
         <input type="hidden" name="tipo" value={tipo} />
         <div className="tipos" role="radiogroup">
           {TIPOS.map(t => (
@@ -95,13 +102,38 @@ export default function Formulario({ especies, tamanos, stock, hoy }: Props) {
           ))}
         </datalist>
 
+        <label>Presentación</label>
+        {/* Botones como en "Tipo de movimiento": la presentación viaja en el campo oculto. */}
+        <input type="hidden" name="presentacion" value={presentacion} />
+        <div className="tipos" role="radiogroup" aria-label="Presentación">
+          {presentaciones.map(p => (
+            <button
+              key={p}
+              type="button"
+              role="radio"
+              aria-checked={presentacion === p}
+              className={presentacion === p ? 'elegido' : undefined}
+              onClick={() => setPresentacion(p)}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+
         <label htmlFor="tamano">Tamaño</label>
         <select id="tamano" name="tamano" value={tamano} onChange={e => setTamano(e.target.value)} required>
+          <option value="" disabled>
+            Elegí un tamaño
+          </option>
           {tamanos.map(t => (
             <option key={t}>{t}</option>
           ))}
         </select>
-        {disponible !== null && <div className="ayuda">Hay {disponible} en este tamaño.</div>}
+        {disponible !== null && (
+          <div className="ayuda">
+            Hay {disponible} en {presentacion.toLowerCase()}, {tamano}.
+          </div>
+        )}
 
         <div className="dos">
           <div>
@@ -158,10 +190,15 @@ export default function Formulario({ especies, tamanos, stock, hoy }: Props) {
             <div className="tabla">
               <table>
                 <tbody>
-                  {tamanos.map(t => (
-                    <tr key={t}>
-                      <td>{t === tamano ? <b>{t}</b> : t}</td>
-                      <td className="num">{stock[elegida.codigo]?.[t] ?? 0}</td>
+                  {delaEspecie.length === 0 && (
+                    <tr>
+                      <td colSpan={2}>Sin stock.</td>
+                    </tr>
+                  )}
+                  {delaEspecie.map(([clave, n]) => (
+                    <tr key={clave}>
+                      <td>{clave === claveStock(presentacion, tamano) ? <b>{clave}</b> : clave}</td>
+                      <td className="num">{n}</td>
                     </tr>
                   ))}
                   <tr>
@@ -178,7 +215,7 @@ export default function Formulario({ especies, tamanos, stock, hoy }: Props) {
             {bajoMinimo(stock, elegida) && <div className="aviso">Por debajo del mínimo ({elegida.minimo})</div>}
           </>
         ) : (
-          <p className="resumen">Elegí una especie para ver cuántas plantas hay de cada tamaño.</p>
+          <p className="resumen">Elegí una especie para ver cuántas plantas hay de cada presentación y tamaño.</p>
         )}
       </aside>
     </div>

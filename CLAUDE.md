@@ -21,6 +21,6 @@ Los mensajes de commit van en español. Subir (push) solo cuando el usuario lo p
 ## Proyectos
 
 - `app-stock/`: control de stock de árboles nativos del vivero (Google Sheets + Apps Script).
-- `app-stock-next/`: la misma app hecha en Next.js, publicada en Vercel, con datos inventados en una base
-  Neon (Postgres). La conexión está en `app-stock-next/.env.local`, que nunca se sube ni se muestra en el chat.
+- `app-stock-next/`: la misma app hecha en Next.js, publicada en Vercel, con una base Neon (Postgres).
+  Stock por especie, presentación y tamaño; arrancó en cero el 2026-10-23. La conexión está en `app-stock-next/.env.local`, que nunca se sube ni se muestra en el chat.
   Ojo: la app local usa la misma base que la publicada; borrar lo que se cargue al probar.

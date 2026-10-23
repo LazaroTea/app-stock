@@ -17,7 +17,7 @@ export default async function PaginaUltimos() {
               <th>Fecha</th>
               <th>Tipo</th>
               <th>Especie</th>
-              <th>Tamaño</th>
+              <th>Presentación</th>
               <th className="num">Cant.</th>
               <th className="solo-ancho">Resp.</th>
             </tr>
@@ -28,7 +28,9 @@ export default async function PaginaUltimos() {
                 <td>{fechaLegible(m.fecha)}</td>
                 <td className={`tipo-${m.tipo}`}>{m.tipo}</td>
                 <td>{nombres.get(m.codigo) ?? m.codigo}</td>
-                <td>{m.tamano}</td>
+                <td>
+                  {m.presentacion} {m.tamano}
+                </td>
                 <td className="num">{m.cantidad}</td>
                 <td className="solo-ancho">{m.responsable}</td>
               </tr>

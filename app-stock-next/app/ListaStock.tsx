@@ -1,16 +1,17 @@
 'use client';
 import { useState } from 'react';
-import { bajoMinimo, totalEspecie } from '@/lib/stock';
+import { bajoMinimo, stockPorPresentacion, totalEspecie } from '@/lib/stock';
 import type { Especie, Stock } from '@/lib/tipos';
 
 interface Props {
   especies: Especie[];
-  /** En el orden en que se muestran (de chico a grande). */
+  /** En el orden en que se muestran. */
+  presentaciones: string[];
   tamanos: string[];
   stock: Stock;
 }
 
-export default function ListaStock({ especies, tamanos, stock }: Props) {
+export default function ListaStock({ especies, presentaciones, tamanos, stock }: Props) {
   const [buscar, setBuscar] = useState('');
   const [soloBajos, setSoloBajos] = useState(false);
   const [verTodas, setVerTodas] = useState(false);
@@ -75,15 +76,21 @@ export default function ListaStock({ especies, tamanos, stock }: Props) {
         {soloBajos ? 'Mostrando solo las especies bajo el mínimo.' : `Mostrando ${lista.length} de ${especies.length} especies.`}
       </p>
 
-      {lista.length === 0 && <p className="resumen">No hay especies que coincidan.</p>}
+      {lista.length === 0 &&
+        (cantidadConStock === 0 && !texto && !verTodas && !soloBajos ? (
+          <div className="tarjeta">
+            Todavía no hay stock cargado. Cargá las entradas desde la pestaña <b>Cargar</b>, o elegí
+            &quot;Todas, con y sin stock&quot; para ver el listado de especies.
+          </div>
+        ) : (
+          <p className="resumen">No hay especies que coincidan.</p>
+        ))}
       <div className="grilla">
         {lista.map(e => {
           const bajo = bajoMinimo(stock, e);
-          const porTamano = tamanos
-            .map(t => [t, stock[e.codigo]?.[t] ?? 0] as const)
-            .filter(([, n]) => n !== 0);
+          const porPresentacion = stockPorPresentacion(stock, e.codigo, presentaciones, tamanos);
           return (
-            <div key={e.codigo} className={bajo ? 'tarjeta bajo' : porTamano.length ? 'tarjeta' : 'tarjeta sin-stock'}>
+            <div key={e.codigo} className={bajo ? 'tarjeta bajo' : porPresentacion.length ? 'tarjeta' : 'tarjeta sin-stock'}>
               <div className="fila">
                 <div>
                   <div className="nombre">{e.comun}</div>
@@ -95,9 +102,9 @@ export default function ListaStock({ especies, tamanos, stock }: Props) {
                 <div className="total">{totalEspecie(stock, e.codigo)}</div>
               </div>
               {bajo && <div className="aviso">Por debajo del mínimo ({e.minimo})</div>}
-              {porTamano.length > 0 && (
-                <div className="tamanos">
-                  {porTamano.map(([t, n]) => (
+              {porPresentacion.length > 0 && (
+                <div className="presentaciones">
+                  {porPresentacion.map(([t, n]) => (
                     <span key={t} className="chip">
                       {t}: <b>{n}</b>
                     </span>

@@ -5,6 +5,6 @@ import ListaStock from './ListaStock';
 export const dynamic = 'force-dynamic';
 
 export default async function PaginaStock() {
-  const [{ especies, tamanos }, stock] = await Promise.all([leerCatalogo(), leerStock()]);
-  return <ListaStock especies={especies} tamanos={tamanos} stock={stock} />;
+  const [{ especies, presentaciones, tamanos }, stock] = await Promise.all([leerCatalogo(), leerStock()]);
+  return <ListaStock especies={especies} presentaciones={presentaciones} tamanos={tamanos} stock={stock} />;
 }

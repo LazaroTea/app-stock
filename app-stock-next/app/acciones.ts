@@ -12,6 +12,7 @@ export interface Resultado {
 
 export async function registrarMovimiento(_anterior: Resultado | null, form: FormData): Promise<Resultado> {
   const tipo = String(form.get('tipo')) as TipoMovimiento;
+  const presentacion = String(form.get('presentacion') ?? '');
   const tamano = String(form.get('tamano') ?? '');
   const cantidad = Number(form.get('cantidad'));
   const fecha = String(form.get('fecha') ?? '');
@@ -24,26 +25,29 @@ export async function registrarMovimiento(_anterior: Resultado | null, form: For
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return { ok: false, mensaje: 'La fecha no es válida.' };
 
   try {
-    const { especies, tamanos } = await leerCatalogo();
+    const { especies, presentaciones, tamanos } = await leerCatalogo();
     const especie = buscarEspecie(especies, String(form.get('especie') ?? ''));
     if (!especie) return { ok: false, mensaje: 'Elegí una especie de la lista.' };
-    if (!tamanos.includes(tamano)) return { ok: false, mensaje: `El tamaño "${tamano}" no existe.` };
+    if (!presentaciones.includes(presentacion)) return { ok: false, mensaje: `La presentación "${presentacion}" no existe.` };
+    if (!tamanos.includes(tamano)) return { ok: false, mensaje: 'Elegí un tamaño de la lista.' };
+    const detalle = `${especie.comun} (${presentacion.toLowerCase()}, ${tamano})`;
 
     const cambio = cantidadConSigno(tipo, cantidad);
     const { habia, guardado } = await guardarMovimiento({
       fecha,
       tipo,
       codigo: especie.codigo,
+      presentacion,
       tamano,
       cantidad,
       cambio,
       responsable: String(form.get('responsable') ?? '').trim(),
       observaciones: String(form.get('observaciones') ?? '').trim(),
     });
-    if (!guardado) return { ok: false, mensaje: `No alcanza el stock: hay ${habia} de ${especie.comun} en ${tamano}.` };
+    if (!guardado) return { ok: false, mensaje: `No alcanza el stock: hay ${habia} de ${detalle}.` };
 
     revalidatePath('/', 'layout');
-    return { ok: true, mensaje: `Guardado. Ahora hay ${habia + cambio} de ${especie.comun} en ${tamano}.` };
+    return { ok: true, mensaje: `Guardado. Ahora hay ${habia + cambio} de ${detalle}.` };
   } catch (e) {
     console.error('Error al guardar el movimiento:', e);
     return { ok: false, mensaje: 'No se pudo guardar: hubo un problema con la base de datos. Probá de nuevo en un rato.' };

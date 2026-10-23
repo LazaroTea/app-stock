@@ -106,8 +106,47 @@ que tiene miles de especies y no es un listado de vivero.
 **Probado:** compila sin errores; los filtros y la búsqueda funcionan; el formulario ofrece las 133 especies;
 sin desbordes en celu (320 px), tablet ni compu.
 
+## 2026-10-23: stock en cero, presentación y tamaño
+
+**Pedido:** dejar todo el stock en cero; agregar la presentación (Maceta, Raíz desnuda, Envasado); usar como
+tamaños los de la lista desplegable de la columna "Tamaño" de la planilla de cotizaciones del vivero
+(Google Sheets).
+
+**Decisiones**
+- Cada movimiento lleva **presentación + tamaño**. El stock se ve por esa combinación
+  (ej. "Raíz desnuda · 12-14RD: 7"). Al principio el usuario eligió "solo presentación", pero después mandó
+  la planilla para los tamaños, así que quedaron las dos.
+- **Stock en cero:** se borraron los 127 movimientos inventados y se dejó de generarlos (se borró
+  `lib/datos-inventados.ts`).
+- **Stocks mínimos en cero** (eran inventados), elegido por el usuario.
+- Se sacó la etiqueta "Datos de prueba" del encabezado, porque ya no hay datos inventados.
+
+**Tamaños** (31, de la pestaña CONSULTATIO, que tiene la lista más completa), ordenados por grupo:
+grosor del tronco (Varillon, 4-6 … 26-30, 12-14RD), altura (150-180cm, 2,5Mts, 3Mts, 4Mts), envase
+(1Lt … 50Lts, E65L), categoría (Semi Ejemplar, Ejemplar, Super Ejemplar) y otros (1Kg, Especificar).
+En la planilla, "2,5Mts" aparecía partido en dos opciones ("2" y "5Mts") porque Google Sheets separa las
+opciones con comas: acá quedó como una sola.
+
+**Cambio en la base:** la app lo hace sola al arrancar si encuentra el formato anterior: borra los
+movimientos, la tabla de tamaños vieja y los mínimos; crea `presentaciones` y `tamanos` nuevas y la columna
+`presentacion` en `movimientos`. Ya se aplicó en la base real.
+
+**Error encontrado y corregido:** después de un guardado que fallaba, el desplegable de tamaño volvía a
+"Elegí un tamaño" aunque por dentro seguía elegido el anterior (mismo problema que el del 20/10 con el tipo de
+movimiento: React reinicia el formulario después de cada envío). Ahora el formulario se envía sin ese
+reinicio, y queda todo como estaba.
+
+**Probado** contra la base real: entrada de 10 Ceibos (raíz desnuda, 12-14RD), salida de 50 rechazada,
+salidas de 3 y 2 correctas, stock y "Últimos" correctos. Los movimientos de prueba se borraron: la base quedó
+con 133 especies, 0 mínimos y 0 movimientos. Compila sin errores.
+
+**Nota:** la planilla de cotizaciones también tiene un desplegable de especies con unas 85, muchas exóticas
+(fresno, liquidámbar, olivo, ginkgo, etc.) que no están en el listado de nativas.
+
 **Pendiente**
 - [ ] Revisión del listado de especies por alguien del vivero.
-- [ ] Subir estos cambios a GitHub y confirmar que Vercel la publica sin error.
+- [ ] ¿Sumar las especies exóticas de la planilla de cotizaciones?
+- [ ] Subir estos cambios a GitHub y confirmar que Vercel la publica sin error. **Hasta que se suba, la
+      versión publicada falla**: la base ya tiene el formato nuevo y el código publicado es el anterior.
 - [ ] **Agregar inicio de sesión**: hoy cualquiera con el link puede cargar movimientos.
 - [ ] Cambiar la contraseña de la base en Neon (quedó escrita en el chat) y actualizar `.env.local`.
