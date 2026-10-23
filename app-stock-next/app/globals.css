@@ -142,6 +142,13 @@ button.indicador { cursor: pointer; }
 .bajo .total { color: var(--rojo); }
 .aviso { color: var(--rojo); font-size: .85rem; margin-top: 4px; }
 .presentaciones { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+/* Selector de depósito arriba del stock. */
+.depositos { margin-bottom: 12px; }
+/* Con "Todos": cuánto hay en cada depósito. */
+.por-deposito { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-size: .85rem; color: var(--verde-oscuro); }
+/* Stock en negativo (se permite: se sacó más de lo cargado). */
+.negativo, .total.negativo, .indicador .valor.negativo, .chip.negativo b { color: var(--rojo); }
+.chip.negativo { border-color: var(--rojo); }
 .chip { background: var(--fondo); border: 1px solid var(--borde); border-radius: 999px; padding: 3px 10px; font-size: .85rem; }
 
 /* ---------- Cargar ---------- */
@@ -178,6 +185,8 @@ button.secundario:hover { background: var(--salvia-claro); }
 .remito td.vacio { color: var(--gris); text-align: center; padding: 18px 8px; }
 .remito tr.sin-stock td { background: var(--rojo-claro); }
 .tamano-linea { color: var(--gris); font-size: .8rem; }
+/* Aviso (no bloquea): con esta línea el depósito queda en negativo. */
+.queda-negativo { color: var(--rojo); font-size: .78rem; }
 button.quitar {
   border: 0; background: none; color: var(--gris); cursor: pointer; font-size: 1rem;
   min-width: 36px; min-height: 36px; border-radius: 6px;
@@ -262,6 +271,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .num { text-align: right; white-space: nowrap; }
 .tipo-Salida { color: var(--rojo); }
 .tipo-Entrada { color: var(--verde); font-weight: 600; }
+.tipo-Pase { color: var(--verde-oscuro); font-style: italic; }
 
 /* En el celu la tabla se achica y esconde la columna Responsable. */
 @media (max-width: 480px) {

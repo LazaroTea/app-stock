@@ -1,4 +1,11 @@
-export const TIPOS = ['Entrada', 'Salida', 'Ajuste'] as const;
+/**
+ * Tipos de movimiento (ver las reglas en lugaresDelTipo y efectos, en lib/stock.ts):
+ * - Entrada: de un proveedor o Palma Sola a un depósito (suma en el depósito).
+ * - Salida: de un depósito a un cliente o Palma Sola (resta en el depósito).
+ * - Pase: de un depósito a otro (resta en el de origen y suma en el de destino).
+ * - Ajuste: corrige el stock de un depósito (positivo o negativo).
+ */
+export const TIPOS = ['Entrada', 'Salida', 'Pase', 'Ajuste'] as const;
 export type TipoMovimiento = (typeof TIPOS)[number];
 
 export interface Especie {
@@ -7,32 +14,31 @@ export interface Especie {
   cientifico: string;
   /** Regiones donde es nativa, separadas por coma (ej. "Chaco, Espinal"), o "Exótica". */
   region: string;
-  /** "Árbol" o "Palmera" (las palmeras tienen requisitos SENASA aparte, Res. 64/2026). */
+  /** "Árbol", "Palmera" o "Frutal" (palmeras y varios frutales tienen requisitos SENASA, Res. 64/2026). */
   grupo: string;
   /** Mínimo para el total de la especie (todas las presentaciones). 0 = sin aviso. */
   minimo: number;
 }
 
+/** Un cambio de stock en un depósito (un pase genera dos: uno en cada depósito). */
 export interface Movimiento {
   id: number;
-  /** Fecha del movimiento, en formato AAAA-MM-DD. */
+  /** Fecha del remito, en formato AAAA-MM-DD. */
   fecha: string;
   tipo: TipoMovimiento;
+  /** El depósito donde cambia el stock. */
+  deposito: string;
   codigo: string;
-  /** Maceta, Raíz desnuda o Envasado. */
+  /** Envasado, Maceta o Raíz desnuda. */
   presentacion: string;
   /** De la lista de tamaños (ej. "12-14", "3Lts", "Ejemplar"). */
   tamano: string;
   /** Lo escrito a mano cuando el tamaño es "Especificar"; vacío en los demás. */
   tamanoDetalle: string;
-  /** Entradas y salidas van sin signo; los ajustes pueden ser negativos. */
+  /** Lo que suma (+) o resta (-) en el depósito. */
   cantidad: number;
   responsable: string;
-  observaciones: string;
-  /** Momento en que se cargó. */
-  registrado: string;
-  /** Número de remito (vacío en los movimientos de antes de los remitos). */
-  remito: number | null;
+  remito: number;
 }
 
 /** Una línea de un remito: qué planta, cómo se entrega y cuántas. */
@@ -42,9 +48,12 @@ export interface LineaRemito {
   tamano: string;
   /** Lo escrito a mano cuando el tamaño es "Especificar"; vacío en los demás. */
   tamanoDetalle: string;
-  /** Sin signo en entradas y salidas; con signo en los ajustes. */
+  /** Sin signo en entradas, salidas y pases; con signo en los ajustes. */
   cantidad: number;
 }
 
 /** { código de especie: { "presentación · tamaño": cantidad } } (ver claveStock en lib/stock.ts) */
 export type Stock = Record<string, Record<string, number>>;
+
+/** El stock de cada depósito: { depósito: Stock }. */
+export type StockPorDeposito = Record<string, Stock>;

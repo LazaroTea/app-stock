@@ -5,24 +5,25 @@ import { startTransition, useActionState, useEffect, useRef, useState } from 're
 import { registrarRemito } from '../acciones';
 import {
   buscarEspecie,
-  cantidadConSigno,
   claveStock,
-  DESTINOS,
+  efectos,
   etiquetaEspecie,
   etiquetaLugar,
   etiquetaTamano,
   fechaLegible,
   LUGARES_A_ESPECIFICAR,
-  PROCEDENCIAS,
+  lugaresDelTipo,
   TAMANO_A_ESPECIFICAR,
+  type ReglaLugar,
 } from '@/lib/stock';
 import type { Sugerencias } from '@/lib/almacen';
-import { TIPOS, type Especie, type LineaRemito, type Stock, type TipoMovimiento } from '@/lib/tipos';
+import { TIPOS, type Especie, type LineaRemito, type StockPorDeposito, type TipoMovimiento } from '@/lib/tipos';
 
 const AYUDAS: Record<TipoMovimiento, string> = {
-  Entrada: 'Plantas que ingresan: producción propia, compras, donaciones.',
-  Salida: 'Plantas que se van: ventas, entregas, pérdidas.',
-  Ajuste: 'Para corregir después de un conteo: positivo si sobran, negativo (ej. -3) si faltan.',
+  Entrada: 'Plantas que ingresan a un depósito: de un proveedor, de Palma Sola, producción propia.',
+  Salida: 'Plantas que salen de un depósito: ventas, entregas a clientes, envíos a Palma Sola, pérdidas.',
+  Pase: 'Plantas que pasan de un depósito a otro: se restan en el de origen y se suman en el de destino.',
+  Ajuste: 'Para corregir un depósito después de un conteo: positivo si sobran, negativo (ej. -3) si faltan.',
 };
 
 // El remito a medio armar se guarda en este dispositivo, para no perderlo si se cierra la página.
@@ -32,7 +33,7 @@ interface Props {
   especies: Especie[];
   presentaciones: string[];
   tamanos: string[];
-  stock: Stock;
+  stock: StockPorDeposito;
   /** Destinatarios, proveedores y clientes ya usados, para sugerirlos. */
   sugerencias: Sugerencias;
   hoy: string;
@@ -69,6 +70,7 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
   const campoEspecie = useRef<HTMLInputElement>(null);
 
   const nombre = new Map(especies.map(e => [e.codigo, e.comun]));
+  const reglas = lugaresDelTipo(tipo);
 
   // Al abrir: el responsable recordado y el remito a medio armar, si había.
   useEffect(() => {
@@ -109,23 +111,43 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
     }
   }, [resultado]);
 
+  // Al cambiar el tipo, se borran los lugares que no corresponden al tipo nuevo.
+  function cambiarTipo(nuevo: TipoMovimiento) {
+    const r = lugaresDelTipo(nuevo);
+    if (!r.procedencia?.opciones.includes(procedencia)) {
+      setProcedencia('');
+      setProcedenciaDetalle('');
+    }
+    if (!r.destino?.opciones.includes(destino)) {
+      setDestino('');
+      setDestinoDetalle('');
+    }
+    setTipo(nuevo);
+  }
+
   const especificar = tamano === TAMANO_A_ESPECIFICAR;
   const tamanoElegido = etiquetaTamano(tamano, limpiar(tamanoDetalle));
   const elegida = buscarEspecie(especies, especie);
 
-  // Lo que hay en stock y lo que ya está en este remito, para la planta que se está por sumar.
-  const enRemito = (codigo: string, clave: string) =>
+  // Los depósitos que toca este remito (en un pase, los dos) y lo que el remito ya suma o resta en cada uno.
+  const depositos = efectos(tipo, procedencia, destino, 1)
+    .map(e => e.deposito)
+    .filter(Boolean);
+  const enRemito = (deposito: string, codigo: string, clave: string) =>
     lineas
       .filter(l => l.codigo === codigo && claveLinea(l) === clave)
-      .reduce((suma, l) => suma + cantidadConSigno(tipo, l.cantidad), 0);
+      .flatMap(l => efectos(tipo, procedencia, destino, l.cantidad))
+      .filter(e => e.deposito === deposito)
+      .reduce((suma, e) => suma + e.cantidad, 0);
+  const hay = (deposito: string, codigo: string, clave: string) => stock[deposito]?.[codigo]?.[clave] ?? 0;
   const claveElegida = claveStock(presentacion, tamanoElegido);
-  const disponible =
-    elegida && tamano && (!especificar || limpiar(tamanoDetalle)) ? (stock[elegida.codigo]?.[claveElegida] ?? 0) : null;
+  const mostrarStock = elegida && tamano && (!especificar || limpiar(tamanoDetalle));
 
   // Tamaños escritos a mano en otros movimientos, para sugerirlos y que se escriban siempre igual.
   const yaEspecificados = [
     ...new Set(
       Object.values(stock)
+        .flatMap(s => Object.values(s))
         .flatMap(Object.keys)
         .map(clave => clave.split(' · ').slice(1).join(' · '))
         .filter(t => !tamanos.includes(t)),
@@ -144,7 +166,7 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
           : !Number.isInteger(n) || n === 0
             ? 'La cantidad tiene que ser un número entero distinto de cero.'
             : tipo !== 'Ajuste' && n < 0
-              ? 'En entradas y salidas la cantidad va sin signo menos.'
+              ? 'La cantidad va sin signo menos (solo los ajustes pueden ser negativos).'
               : '';
     if (error || !elegida) {
       setAviso({ ok: false, texto: error });
@@ -185,25 +207,31 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
     );
   }
 
-  // Control de cada línea: en salidas y ajustes, que no se saque más de lo que hay.
+  // Cómo queda cada depósito con cada línea. No se limita: si queda en negativo, solo se avisa.
   const filas = lineas.map(l => {
     const clave = claveLinea(l);
-    const hay = stock[l.codigo]?.[clave] ?? 0;
-    const queda = hay + enRemito(l.codigo, clave);
-    return { linea: l, hay, sinStock: tipo !== 'Entrada' && queda < 0 };
+    const negativos = depositos
+      .map(d => ({ deposito: d, queda: hay(d, l.codigo, clave) + enRemito(d, l.codigo, clave) }))
+      .filter(q => q.queda < 0);
+    return { linea: l, negativos };
   });
   const conSigno = tipo !== 'Ajuste' && lineas.some(l => l.cantidad < 0);
   const totalPlantas = lineas.reduce((suma, l) => suma + l.cantidad, 0);
+  const faltaLugar = (regla: ReglaLugar | null, lugar: string) => regla?.obligatorio && !lugar;
   const faltaNombre = (lugar: string, detalle: string) => LUGARES_A_ESPECIFICAR.includes(lugar) && !limpiar(detalle);
   const problema = conSigno
     ? 'Hay cantidades negativas: solo se permiten en los ajustes.'
-    : filas.some(f => f.sinStock)
-      ? 'Hay líneas sin stock suficiente (en rojo).'
-      : faltaNombre(procedencia, procedenciaDetalle)
-        ? 'Falta escribir qué proveedor es (Procedencia).'
-        : faltaNombre(destino, destinoDetalle)
-          ? 'Falta escribir qué cliente es (Destino).'
-          : '';
+    : faltaLugar(reglas.procedencia, procedencia)
+      ? `Elegí el ${reglas.procedencia?.titulo.toLowerCase()}.`
+      : faltaLugar(reglas.destino, destino)
+        ? `Elegí el ${reglas.destino?.titulo.toLowerCase()}.`
+        : faltaNombre(procedencia, procedenciaDetalle)
+          ? 'Falta escribir qué proveedor es.'
+          : faltaNombre(destino, destinoDetalle)
+            ? 'Falta escribir qué cliente es.'
+            : tipo === 'Pase' && procedencia && procedencia === destino
+              ? 'El depósito de origen y el de destino tienen que ser distintos.'
+              : '';
 
   return (
     <div className="cargar">
@@ -226,13 +254,38 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
               role="radio"
               aria-checked={tipo === t}
               className={tipo === t ? 'elegido' : undefined}
-              onClick={() => setTipo(t)}
+              onClick={() => cambiarTipo(t)}
             >
               {t}
             </button>
           ))}
         </div>
         <div className="ayuda">{AYUDAS[tipo]}</div>
+
+        <div className="dos">
+          {reglas.procedencia && (
+            <CampoLugar
+              id="procedencia"
+              regla={reglas.procedencia}
+              lugar={procedencia}
+              detalle={procedenciaDetalle}
+              onLugar={setProcedencia}
+              onDetalle={setProcedenciaDetalle}
+              sugeridos={sugerencias.proveedores}
+            />
+          )}
+          {reglas.destino && (
+            <CampoLugar
+              id="destino"
+              regla={reglas.destino}
+              lugar={destino}
+              detalle={destinoDetalle}
+              onLugar={setDestino}
+              onDetalle={setDestinoDetalle}
+              sugeridos={sugerencias.clientes}
+            />
+          )}
+        </div>
 
         <div className="dos">
           <div>
@@ -248,29 +301,6 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
               onChange={e => setResponsable(e.target.value)}
             />
           </div>
-        </div>
-
-        <div className="dos">
-          <CampoLugar
-            id="procedencia"
-            titulo="Procedencia"
-            opciones={PROCEDENCIAS}
-            lugar={procedencia}
-            detalle={procedenciaDetalle}
-            onLugar={setProcedencia}
-            onDetalle={setProcedenciaDetalle}
-            sugeridos={sugerencias.proveedores}
-          />
-          <CampoLugar
-            id="destino"
-            titulo="Destino"
-            opciones={DESTINOS}
-            lugar={destino}
-            detalle={destinoDetalle}
-            onLugar={setDestino}
-            onDetalle={setDestinoDetalle}
-            sugeridos={sugerencias.clientes}
-          />
         </div>
 
         <label htmlFor="destinatario">
@@ -378,12 +408,19 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
             </datalist>
           </>
         )}
-        {disponible !== null && elegida && (
+        {mostrarStock && elegida && (
           <div className="ayuda">
-            Hay {disponible} en {presentacion.toLowerCase()}, {tamanoElegido}
-            {enRemito(elegida.codigo, claveElegida) !== 0 &&
-              ` (en este remito: ${enRemito(elegida.codigo, claveElegida) > 0 ? '+' : ''}${enRemito(elegida.codigo, claveElegida)})`}
-            .
+            {depositos.length === 0
+              ? 'Elegí el depósito para ver cuántas hay.'
+              : depositos.map(d => {
+                  const enEste = enRemito(d, elegida.codigo, claveElegida);
+                  return (
+                    <div key={d}>
+                      En {d} hay {hay(d, elegida.codigo, claveElegida)} de {presentacion.toLowerCase()}, {tamanoElegido}
+                      {enEste !== 0 && ` (en este remito: ${enEste > 0 ? '+' : ''}${enEste})`}.
+                    </div>
+                  );
+                })}
           </div>
         )}
 
@@ -407,8 +444,16 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
         </div>
         {(procedencia || destino || destinatario || responsable) && (
           <div className="remito-extra">
-            {procedencia && <div>Procedencia: {etiquetaLugar(procedencia, limpiar(procedenciaDetalle))}</div>}
-            {destino && <div>Destino: {etiquetaLugar(destino, limpiar(destinoDetalle))}</div>}
+            {reglas.procedencia && procedencia && (
+              <div>
+                {reglas.procedencia.titulo}: {etiquetaLugar(procedencia, limpiar(procedenciaDetalle))}
+              </div>
+            )}
+            {reglas.destino && destino && (
+              <div>
+                {reglas.destino.titulo}: {etiquetaLugar(destino, limpiar(destinoDetalle))}
+              </div>
+            )}
             {destinatario && <div className="remito-destinatario">Destinatario: {destinatario}</div>}
             {responsable && <div>Responsable: {responsable}</div>}
           </div>
@@ -432,11 +477,15 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
                   </td>
                 </tr>
               )}
-              {filas.map(({ linea, hay, sinStock }, i) => (
-                <tr key={linea.codigo + claveLinea(linea)} className={sinStock ? 'sin-stock' : undefined}>
+              {filas.map(({ linea, negativos }, i) => (
+                <tr key={linea.codigo + claveLinea(linea)}>
                   <td>
                     {nombre.get(linea.codigo) ?? linea.codigo}
-                    {sinStock && <div className="aviso">Hay {hay}</div>}
+                    {negativos.map(q => (
+                      <div key={q.deposito} className="queda-negativo">
+                        {q.deposito} queda en {q.queda}
+                      </div>
+                    ))}
                   </td>
                   <td>
                     {linea.presentacion}
@@ -469,7 +518,8 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
           </b>
         </div>
 
-        {problema && <div className="mensaje error">{problema}</div>}
+        {/* Lo que falta para poder guardar (solo cuando ya hay plantas sumadas). */}
+        {problema && lineas.length > 0 && <div className="mensaje error">{problema}</div>}
         <button
           type="button"
           className="principal"
@@ -495,8 +545,7 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
 
 interface PropsLugar {
   id: string;
-  titulo: string;
-  opciones: string[];
+  regla: ReglaLugar;
   lugar: string;
   detalle: string;
   onLugar: (valor: string) => void;
@@ -505,17 +554,20 @@ interface PropsLugar {
   sugeridos: string[];
 }
 
-// Procedencia o destino: un desplegable y, si se elige "Proveedor" o "Cliente", un renglón para escribir cuál.
-function CampoLugar({ id, titulo, opciones, lugar, detalle, onLugar, onDetalle, sugeridos }: PropsLugar) {
+// Un lugar (procedencia, destino o depósito) con las opciones que corresponden al tipo de movimiento.
+// Si se elige "Proveedor" o "Cliente", aparece un renglón para escribir cuál.
+function CampoLugar({ id, regla, lugar, detalle, onLugar, onDetalle, sugeridos }: PropsLugar) {
   const especificar = LUGARES_A_ESPECIFICAR.includes(lugar);
   return (
     <div>
       <label htmlFor={id}>
-        {titulo} <span className="opcional">(opcional)</span>
+        {regla.titulo} {!regla.obligatorio && <span className="opcional">(opcional)</span>}
       </label>
       <select id={id} value={lugar} onChange={e => onLugar(e.target.value)}>
-        <option value="">Sin especificar</option>
-        {opciones.map(o => (
+        <option value="" disabled={regla.obligatorio}>
+          {regla.obligatorio ? 'Elegí uno' : 'Sin especificar'}
+        </option>
+        {regla.opciones.map(o => (
           <option key={o}>{o}</option>
         ))}
       </select>

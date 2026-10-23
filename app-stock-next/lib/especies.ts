@@ -1,4 +1,5 @@
-// Listado de especies del vivero: árboles y arbustos NATIVOS de Argentina, y PALMERAS (nativas y exóticas).
+// Listado de especies del vivero: árboles y arbustos NATIVOS de Argentina, PALMERAS (nativas y exóticas)
+// y FRUTALES (olivo, cítricos, carozo, pepita y otros).
 //
 // No es un listado oficial: SENASA no publica uno de especies nativas. Su listado de "especies priorizadas"
 // (Resolución SENASA 64/2026) incluye a TODAS las palmeras (familia Arecaceae) y a la cica (Cycas revoluta):
@@ -22,6 +23,13 @@ function arbol(codigo: string, comun: string, cientifico: string, region: string
 // Las palmeras exóticas llevan región "Exótica".
 function palmera(codigo: string, comun: string, cientifico: string, region: string, minimo = 0): Especie {
   return { codigo, comun, cientifico, region, grupo: 'Palmera', minimo };
+}
+
+// Los frutales son todos exóticos. Varios están en el listado de especies priorizadas de SENASA
+// (Res. 64/2026: cítricos, carozo, pepita, palta, banano, vid, olivo, kiwi), con los mismos requisitos
+// sanitarios que las palmeras.
+function frutal(codigo: string, comun: string, cientifico: string, minimo = 0): Especie {
+  return { codigo, comun, cientifico, region: 'Exótica', grupo: 'Frutal', minimo };
 }
 
 export const ESPECIES: Especie[] = [
@@ -196,4 +204,38 @@ export const ESPECIES: Especie[] = [
   palmera('TRF', 'Palmera de la China', 'Trachycarpus fortunei', 'Exótica'),
   // La cica no es una palmera, pero SENASA la incluye en el mismo grupo que las palmeras.
   palmera('CYC', 'Cica', 'Cycas revoluta', 'Exótica'),
+
+  // Frutales
+  frutal('OLI', 'Olivo', 'Olea europaea'),
+  // Cítricos
+  frutal('LIM', 'Limonero', 'Citrus limon'),
+  frutal('NAR', 'Naranjo', 'Citrus sinensis'),
+  frutal('NAM', 'Naranjo amargo', 'Citrus × aurantium'),
+  frutal('MDR', 'Mandarino', 'Citrus reticulata'),
+  frutal('POM', 'Pomelo', 'Citrus × paradisi'),
+  frutal('LMA', 'Lima', 'Citrus aurantiifolia'),
+  frutal('KUM', 'Kumquat', 'Citrus japonica'),
+  // Carozo
+  frutal('DUR', 'Durazno', 'Prunus persica'),
+  frutal('PEL', 'Pelón (nectarina)', 'Prunus persica var. nucipersica'),
+  frutal('CIR', 'Ciruelo', 'Prunus domestica'),
+  frutal('DAM', 'Damasco', 'Prunus armeniaca'),
+  frutal('CRZ', 'Cerezo', 'Prunus avium'),
+  frutal('ALM', 'Almendro', 'Prunus dulcis'),
+  // Pepita
+  frutal('MZA', 'Manzano', 'Malus domestica'),
+  frutal('PER', 'Peral', 'Pyrus communis'),
+  frutal('MEM', 'Membrillo', 'Cydonia oblonga'),
+  // Otros
+  frutal('PLT', 'Palta', 'Persea americana'),
+  frutal('BAN', 'Banano', 'Musa × paradisiaca'),
+  frutal('VID', 'Vid', 'Vitis vinifera'),
+  frutal('KIW', 'Kiwi', 'Actinidia deliciosa'),
+  frutal('HGU', 'Higuera', 'Ficus carica'),
+  frutal('GRN', 'Granado', 'Punica granatum'),
+  frutal('NGE', 'Nogal europeo', 'Juglans regia'),
+  frutal('PCN', 'Pecán', 'Carya illinoinensis'),
+  frutal('CAQ', 'Caqui', 'Diospyros kaki'),
+  frutal('NIS', 'Níspero', 'Eriobotrya japonica'),
+  frutal('ARA', 'Arándano', 'Vaccinium corymbosum'),
 ];

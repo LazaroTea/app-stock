@@ -285,8 +285,41 @@ sin desbordes. El remito de prueba se borró; quedan los 2 remitos del vivero y 
 lugar (Palma Sola, Goya, Pilar, Benavidez), se puede llevar el stock por lugar usando procedencia y destino
 (por ejemplo, un pase de Goya a Pilar resta en Goya y suma en Pilar).
 
+## 2026-10-23: stock por depósito, pases, sin límite de stock y frutales
+
+**Pedido:** sumar el olivo y los frutales; llevar el stock de cada depósito (Benavidez, Pilar y Goya) y
+cruzar la información según los movimientos entre ellos; no limitar los movimientos por la cantidad que haya.
+
+**Decisiones** (elegidas por el usuario)
+- **Palma Sola no lleva stock:** es origen o destino, como un proveedor o un cliente.
+- **Cuatro tipos con botones**, y cada uno muestra solo los lugares que le corresponden:
+  - Entrada: procedencia (opcional: Palma Sola o Proveedor) → depósito de destino (obligatorio). Suma.
+  - Salida: depósito de origen (obligatorio) → destino (opcional: Palma Sola o Cliente). Resta.
+  - Pase: depósito de origen → depósito de destino (distintos). Resta en uno y suma en el otro.
+  - Ajuste: depósito. Suma o resta según el signo.
+- **Se borró todo lo cargado antes** (eran pruebas) y el stock arrancó en cero, con la numeración en 000001.
+
+**Qué se hizo**
+- Tablas nuevas: `remitos` (ahora con tipo "Pase") y `movimientos` con `deposito` y `cantidad` con signo; un
+  pase genera dos movimientos por línea. La app hizo el cambio sola al arrancar.
+- Sin límite de stock: se guarda aunque no alcance. El remito avisa "Pilar queda en −2" pero no bloquea, y el
+  stock negativo se ve en rojo.
+- Stock: botones Todos / Benavidez / Pilar / Goya; con Todos, cada especie muestra cuánto hay en cada depósito.
+- Cargar: debajo del tamaño se ve cuánto hay en el depósito (en un pase, en los dos).
+- Últimos: columna Depósito y cantidad con signo (+/−).
+- Remito impreso: "Depósito de origen" / "Depósito de destino" / "Procedencia" / "Destino" según el tipo.
+- 28 frutales (`frutal(...)` en `lib/especies.ts`, grupo "Frutal"): olivo, 7 cítricos, 6 de carozo,
+  3 de pepita y otros 11 (palta, banano, vid, kiwi, higuera, granado, nogal europeo, pecán, caqui, níspero,
+  arándano). Cargados en la base: 179 especies. Filtro "Solo frutales" en Stock.
+
+**Probado** contra la base real: entrada de un proveedor a Goya (10 olivos y 5 ceibos), pase de 4 olivos de Goya
+a Pilar, salida de 6 olivos de Pilar a un cliente (Pilar quedó en −2, con aviso y sin bloquear) y ajuste de +2
+ceibos en Benavidez. Stock: Goya 6 olivos y 5 ceibos; Pilar −2 olivos; Benavidez 2 ceibos; Todos 4 olivos y
+7 ceibos. Últimos mostró el pase en dos filas (−4 Goya, +4 Pilar) y el remito impreso los depósitos. Celu sin
+desbordes. Los 4 remitos de prueba se borraron (base en cero, próximo remito 000001). Compila sin errores.
+
 **Pendiente**
-- [ ] Revisión del listado de especies (árboles y palmeras) por alguien del vivero.
+- [ ] Revisión del listado de especies (árboles, palmeras y frutales) por alguien del vivero.
 - [ ] ¿Sumar las otras especies exóticas de la planilla de cotizaciones y de la web (fresnos, liquidámbar,
       olivo, etc.)?
 - [ ] Subir estos cambios a GitHub y confirmar que Vercel la publica sin error.

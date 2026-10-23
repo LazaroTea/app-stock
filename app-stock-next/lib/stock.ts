@@ -1,13 +1,76 @@
-// Cálculos que se usan tanto en el servidor como en la pantalla.
+// Cálculos y reglas que se usan tanto en el servidor como en la pantalla.
 // El stock nunca se guarda: la base de datos lo calcula sumando los movimientos (ver lib/almacen.ts).
-import type { Especie, Stock, TipoMovimiento } from './tipos';
+import type { Especie, Stock, StockPorDeposito, TipoMovimiento } from './tipos';
 
-// Las salidas restan, las entradas suman y los ajustes van con su signo (+ o -).
-// La misma regla está escrita en SQL en lib/almacen.ts: si cambia una, hay que cambiar la otra.
-export function cantidadConSigno(tipo: TipoMovimiento, cantidad: number): number {
-  if (tipo === 'Salida') return -Math.abs(cantidad);
-  if (tipo === 'Entrada') return Math.abs(cantidad);
-  return cantidad;
+/** Los depósitos de Native: cada uno lleva su propio stock. */
+export const DEPOSITOS = ['Benavidez', 'Pilar', 'Goya'];
+/** De dónde pueden venir las entradas y a dónde pueden ir las salidas (sin stock propio). */
+export const ORIGENES_EXTERNOS = ['Palma Sola', 'Proveedor'];
+export const DESTINOS_EXTERNOS = ['Palma Sola', 'Cliente'];
+/** Con estos hay que escribir cuál (nombre del proveedor o del cliente). */
+export const LUGARES_A_ESPECIFICAR = ['Proveedor', 'Cliente'];
+
+export interface ReglaLugar {
+  titulo: string;
+  opciones: string[];
+  obligatorio: boolean;
+}
+
+// Qué lugares se piden en cada tipo de movimiento. null = ese campo no va.
+export function lugaresDelTipo(tipo: TipoMovimiento): { procedencia: ReglaLugar | null; destino: ReglaLugar | null } {
+  const depositoOrigen = { titulo: 'Depósito de origen', opciones: DEPOSITOS, obligatorio: true };
+  const depositoDestino = { titulo: 'Depósito de destino', opciones: DEPOSITOS, obligatorio: true };
+  switch (tipo) {
+    case 'Entrada':
+      return { procedencia: { titulo: 'Procedencia', opciones: ORIGENES_EXTERNOS, obligatorio: false }, destino: depositoDestino };
+    case 'Salida':
+      return { procedencia: depositoOrigen, destino: { titulo: 'Destino', opciones: DESTINOS_EXTERNOS, obligatorio: false } };
+    case 'Pase':
+      return { procedencia: depositoOrigen, destino: depositoDestino };
+    case 'Ajuste':
+      return { procedencia: null, destino: { titulo: 'Depósito', opciones: DEPOSITOS, obligatorio: true } };
+  }
+}
+
+/**
+ * Qué le hace una línea de remito al stock de cada depósito:
+ * la entrada suma en el destino, la salida resta en el origen, el pase resta en el origen y suma en el
+ * destino, y el ajuste suma o resta (según su signo) en el depósito elegido.
+ */
+export function efectos(
+  tipo: TipoMovimiento,
+  procedencia: string,
+  destino: string,
+  cantidad: number,
+): { deposito: string; cantidad: number }[] {
+  const n = Math.abs(cantidad);
+  switch (tipo) {
+    case 'Entrada':
+      return [{ deposito: destino, cantidad: n }];
+    case 'Salida':
+      return [{ deposito: procedencia, cantidad: -n }];
+    case 'Pase':
+      return [
+        { deposito: procedencia, cantidad: -n },
+        { deposito: destino, cantidad: n },
+      ];
+    case 'Ajuste':
+      return [{ deposito: destino, cantidad }];
+  }
+}
+
+// El stock de un depósito, o de todos sumados si deposito es "".
+export function stockDe(porDeposito: StockPorDeposito, deposito: string): Stock {
+  if (deposito) return porDeposito[deposito] ?? {};
+  const suma: Stock = {};
+  for (const stock of Object.values(porDeposito)) {
+    for (const [codigo, claves] of Object.entries(stock)) {
+      for (const [clave, n] of Object.entries(claves)) {
+        (suma[codigo] ??= {})[clave] = (suma[codigo][clave] ?? 0) + n;
+      }
+    }
+  }
+  return suma;
 }
 
 /** El tamaño que, al elegirlo, pide escribir el tamaño a mano. */
@@ -63,11 +126,6 @@ export function buscarEspecie(especies: Especie[], texto: string): Especie | und
   const t = texto.trim().toLowerCase();
   return especies.find(e => etiquetaEspecie(e).toLowerCase() === t || e.codigo.toLowerCase() === t);
 }
-
-// De dónde vienen y a dónde van las plantas de un remito. Con "Proveedor" y "Cliente" se escribe cuál.
-export const PROCEDENCIAS = ['Palma Sola', 'Goya', 'Pilar', 'Benavidez', 'Proveedor'];
-export const DESTINOS = ['Palma Sola', 'Goya', 'Pilar', 'Benavidez', 'Cliente'];
-export const LUGARES_A_ESPECIFICAR = ['Proveedor', 'Cliente'];
 
 // "Proveedor" + "Vivero El Ceibo" -> "Proveedor (Vivero El Ceibo)"; "Goya" -> "Goya".
 export function etiquetaLugar(lugar: string, detalle: string): string {

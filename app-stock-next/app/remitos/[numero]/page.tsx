@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { leerRemito } from '@/lib/almacen';
 import { EMPRESA } from '@/lib/empresa';
-import { etiquetaLugar, etiquetaTamano, fechaLegible, numeroRemito } from '@/lib/stock';
+import { etiquetaLugar, etiquetaTamano, fechaLegible, lugaresDelTipo, numeroRemito } from '@/lib/stock';
 import BotonImprimir from './BotonImprimir';
 
 export const dynamic = 'force-dynamic';
@@ -23,6 +23,8 @@ export default async function PaginaRemito({ params }: Props) {
   if (!remito) notFound();
 
   const total = remito.lineas.reduce((suma, l) => suma + l.cantidad, 0);
+  // Los títulos dependen del tipo: "Procedencia" / "Depósito de destino" en una entrada, etc.
+  const reglas = lugaresDelTipo(remito.tipo);
 
   return (
     <>
@@ -61,14 +63,14 @@ export default async function PaginaRemito({ params }: Props) {
           <div>
             <span>Movimiento:</span> {remito.tipo}
           </div>
-          {remito.procedencia && (
+          {reglas.procedencia && remito.procedencia && (
             <div>
-              <span>Procedencia:</span> {etiquetaLugar(remito.procedencia, remito.procedenciaDetalle)}
+              <span>{reglas.procedencia.titulo}:</span> {etiquetaLugar(remito.procedencia, remito.procedenciaDetalle)}
             </div>
           )}
-          {remito.destino && (
+          {reglas.destino && remito.destino && (
             <div>
-              <span>Destino:</span> {etiquetaLugar(remito.destino, remito.destinoDetalle)}
+              <span>{reglas.destino.titulo}:</span> {etiquetaLugar(remito.destino, remito.destinoDetalle)}
             </div>
           )}
           {remito.destinatario && (

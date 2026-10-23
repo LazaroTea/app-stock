@@ -4,16 +4,19 @@ Versión paralela de `../app-stock` hecha con **Next.js**, una herramienta para 
 Hace lo mismo que la versión de Google (Stock, Cargar, Últimos), pero se publica en **Vercel** y guarda
 los datos en una base de datos **Neon** (Postgres) en internet.
 
-El stock se lleva por **especie**, **presentación** (Maceta, Raíz desnuda o Envasado) y **tamaño**
-(la lista de la planilla de cotizaciones del vivero: 6-8, 12-14, 3Lts, Ejemplar, etc.).
+El stock se lleva **por depósito** (Benavidez, Pilar y Goya) y, dentro de cada uno, por **especie**,
+**presentación** (Envasado, Maceta o Raíz desnuda) y **tamaño** (la lista de la planilla de cotizaciones del
+vivero: 6-8, 12-14, 3Lts, Ejemplar, etc.). Palma Sola no lleva stock: es un origen o destino, como un
+proveedor o un cliente.
 
-> **El stock arranca en cero.** Las especies son reales: 151 en total (ver `lib/especies.ts`):
-> 130 árboles y arbustos nativos de Argentina y 21 palmeras (7 nativas, 13 exóticas y la cica).
-> No es un listado oficial: SENASA no publica uno de especies nativas.
+> **El stock arranca en cero** (2026-10-23). Las especies son reales: 179 en total (ver `lib/especies.ts`):
+> 130 árboles y arbustos nativos de Argentina, 21 palmeras (7 nativas, 13 exóticas y la cica) y 28 frutales
+> (olivo, cítricos, carozo, pepita y otros). No es un listado oficial: SENASA no publica uno de especies nativas.
 >
-> **Palmeras y SENASA:** la Resolución SENASA 64/2026 incluye a todas las palmeras (y a la cica) en su listado
-> de especies priorizadas. Se pueden comerciar, pero el vivero tiene que estar inscripto en el RENFO y cumplir
-> los requisitos sanitarios de esa resolución. En la app aparecen con la etiqueta **Palmera**.
+> **Palmeras, frutales y SENASA:** la Resolución SENASA 64/2026 incluye a todas las palmeras (y a la cica) y a
+> varios frutales (cítricos, carozo, pepita, palta, banano, vid, olivo, kiwi) en su listado de especies
+> priorizadas. Se pueden comerciar, pero el vivero tiene que estar inscripto en el RENFO y cumplir los
+> requisitos sanitarios de esa resolución. En la app aparecen con la etiqueta **Palmera** o **Frutal**.
 
 > **Atención: la app no tiene contraseña.** Cualquiera que tenga el link de Vercel puede ver el stock
 > y cargar movimientos. No compartas el link hasta que sumemos el inicio de sesión.
@@ -65,24 +68,33 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 
 ## Cómo se usa
 
-- **Stock:** cada especie muestra su total y el detalle por presentación y tamaño (ej. "Raíz desnuda · 12-14: 7").
-  Arriba hay tres números: total de plantas, especies con stock y especies bajo el mínimo (tocándolo se ven
-  solo esas). De entrada se ven solo las especies **con stock**; con los filtros se elige una **región** o
-  se ven **todas**; también se puede ver **solo árboles** o **solo palmeras**. Al buscar por nombre aparecen también las que no tienen stock.
+- **Stock:** arriba se elige qué ver: **Todos** (los tres depósitos sumados) o un depósito. Cada especie
+  muestra su total y el detalle por presentación y tamaño (ej. "Raíz desnuda · 12-14: 7"); con "Todos",
+  también cuánto hay en cada depósito ("Pilar: −2 · Goya: 6"). Los números en negativo salen en rojo.
+  Hay tres números: total de plantas, especies con stock y especies bajo el mínimo (tocándolo se ven solo
+  esas). De entrada se ven solo las especies **con stock**; con los filtros se elige una **región** o se ven
+  **todas**, y se puede ver **solo árboles**, **solo palmeras** o **solo frutales**. Al buscar por nombre
+  aparecen también las que no tienen stock.
 - **Cargar** (en formato **remito**):
-  1. **Datos del remito:** tipo de movimiento (Entrada, Salida o Ajuste), fecha, responsable,
-     **procedencia** y **destino** (opcionales), **destinatario** (opcional: persona o contacto que recibe)
-     y observaciones.
-     - Procedencia: Palma Sola, Goya, Pilar, Benavidez o **Proveedor**.
-     - Destino: Palma Sola, Goya, Pilar, Benavidez o **Cliente**.
-     - Si se elige Proveedor o Cliente, aparece un renglón para escribir cuál (se sugieren los ya usados).
-       Las listas están en `lib/stock.ts` (`PROCEDENCIAS` y `DESTINOS`).
+  1. **Datos del remito:** tipo de movimiento, los lugares que corresponden a ese tipo, fecha, responsable,
+     **destinatario** (opcional: persona o contacto que recibe) y observaciones.
+
+     | Tipo | De dónde | A dónde | Qué hace con el stock |
+     |---|---|---|---|
+     | **Entrada** | Procedencia (opcional): Palma Sola o Proveedor | Depósito de destino | Suma en el depósito |
+     | **Salida** | Depósito de origen | Destino (opcional): Palma Sola o Cliente | Resta en el depósito |
+     | **Pase** | Depósito de origen | Depósito de destino | Resta en el origen y suma en el destino |
+     | **Ajuste** | — | Depósito | Suma o resta (cantidad con signo) |
+
+     Si se elige Proveedor o Cliente, aparece un renglón para escribir cuál (se sugieren los ya usados).
+     Los depósitos y lugares están en `lib/stock.ts` (`DEPOSITOS`, `ORIGENES_EXTERNOS`, `DESTINOS_EXTERNOS`).
   2. **Sumar plantas:** especie, presentación (botones), tamaño (desplegable) y cantidad, y el botón
      **+ Sumar** (o Enter). Cada planta sumada aparece en el remito, al costado en la compu y abajo en el celu.
      Si se suma algo que ya está (misma especie, presentación y tamaño), se juntan las cantidades.
      Con la ✕ se quita una línea.
-  3. **Guardar movimiento:** guarda todo el remito junto y le pone un número (000001, 000002…). Si a alguna
-     línea no le alcanza el stock, se marca en rojo y no se guarda nada hasta corregirla.
+  3. **Guardar movimiento:** guarda todo el remito junto y le pone un número (000001, 000002…).
+     **No se limita por el stock:** se puede sacar más de lo que hay; el depósito queda en negativo y el remito
+     solo avisa ("Pilar queda en −2").
 
   El tamaño no viene elegido de entrada, para que no se sume uno por descuido. Si se elige **Especificar**,
   aparece un renglón para escribir el tamaño a mano (ej. "5 m de altura"); los ya escritos se sugieren para
@@ -98,7 +110,8 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
   en la ventana de impresión se elige la impresora o **Guardar como PDF**. Los datos de la empresa que
   aparecen se cambian en `lib/empresa.ts`. Dice "Remito interno… no válido como factura", porque no es un
   remito fiscal.
-- **Últimos:** los últimos 30 movimientos, con su número de remito.
+- **Últimos:** los últimos 30 movimientos: cada fila es lo que suma (+) o resta (−) en un depósito, con su
+  número de remito (un pase aparece dos veces, una por depósito).
 
 | Pantalla | Cómo se acomoda |
 |---|---|
@@ -122,7 +135,7 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 | `public/`, `app/icon.svg` | Logo de Native (crema para la app, verde para el remito impreso) y el ícono de la pestaña. |
 | `lib/stock.ts` | Reglas del stock (las salidas restan, etc.) y ayudas para la pantalla. |
 | `lib/almacen.ts` | Lee y guarda los datos en la base Neon. Crea las tablas la primera vez. Tiene las listas iniciales de presentaciones y tamaños. |
-| `lib/especies.ts` | El listado de las 151 especies (árboles nativos y palmeras), con su región y grupo. |
+| `lib/especies.ts` | El listado de las 179 especies (árboles nativos, palmeras y frutales), con su región y grupo. |
 | `lib/tipos.ts` | La forma de los datos (especie, movimiento). |
 | `scripts/cargar-especies.ts` | Agrega a la base las especies del listado que falten. |
 | `.env.local` | La conexión a la base (solo en tu compu, no está en GitHub). |
@@ -131,28 +144,30 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 
 Hay cinco tablas:
 
-- **especies**: código, nombre común, nombre científico, región (o "Exótica"), grupo (Árbol o Palmera), stock mínimo.
+- **especies**: código, nombre común, nombre científico, región (o "Exótica"), grupo (Árbol, Palmera o
+  Frutal), stock mínimo.
 - **presentaciones**: Envasado, Maceta, Raíz desnuda (y su orden; la primera viene elegida al cargar).
 - **tamanos**: los tamaños y su orden.
-- **remitos**: número (`id`), fecha, tipo, procedencia y destino (con `procedencia_detalle` y `destino_detalle`
-  para el nombre del proveedor o cliente), destinatario, responsable y observaciones de cada remito.
-- **movimientos**: una fila por cada línea de remito, con su presentación, tamaño (y en `tamano_detalle`, lo
-  escrito a mano cuando el tamaño es "Especificar") y el número de remito (`remito_id`). Los movimientos
-  cargados antes de los remitos no tienen número.
+- **remitos**: número (`id`), fecha, tipo (Entrada, Salida, Pase o Ajuste), procedencia y destino (con
+  `procedencia_detalle` y `destino_detalle` para el nombre del proveedor o cliente; en los ajustes, el depósito
+  va en `destino`), destinatario, responsable y observaciones.
+- **movimientos**: lo que cada línea de remito suma (+) o resta (−) en un **depósito** (`deposito`), con su
+  especie, presentación, tamaño (y en `tamano_detalle`, lo escrito a mano con "Especificar"), el número de
+  remito (`remito_id`) y el número de línea (`linea`). Un pase genera dos movimientos por línea: −N en el
+  depósito de origen y +N en el de destino.
 
-El stock no se guarda: la base lo calcula sumando los movimientos.
+El stock no se guarda: la base lo calcula sumando los movimientos de cada depósito.
 
 - La primera vez que se abre la app, crea las tablas y carga especies, presentaciones y tamaños. Solo lo hace
   si están **vacías**: nunca pisa datos que ya existen.
 - Las tablas se pueden ver y editar desde el panel de Neon (**Tables**). Por ejemplo, para cargar el
   stock mínimo de una especie, o para **agregar un tamaño** (fila nueva en `tamanos`, con un número de
   `orden` para ubicarlo en la lista).
-- Si dos personas guardan al mismo tiempo, la base las atiende de a una, así nadie deja el stock negativo.
-  Un remito se guarda entero o no se guarda: nunca queda a medias.
+- Un remito se guarda entero o no se guarda: nunca queda a medias.
 
 ### Agregar o corregir especies
 
-1. Editá `lib/especies.ts`: una línea por especie, con `arbol(...)` o `palmera(...)` (código, nombre común,
+1. Editá `lib/especies.ts`: una línea por especie, con `arbol(...)`, `palmera(...)` o `frutal(...)` (código, nombre común,
    nombre científico, región y, si querés, stock mínimo). El código tiene que ser único.
 2. En una terminal, dentro de esta carpeta:
 

@@ -2,13 +2,17 @@
 // La conexión sale de la variable DATABASE_URL: en la compu está en .env.local
 // y en Vercel la carga sola la integración con Neon.
 //
-// La primera vez que se usa, crea las tablas y carga las especies nativas y las presentaciones
+// La primera vez que se usa, crea las tablas y carga las especies, las presentaciones y los tamaños
 // (solo si están vacías: nunca pisa datos que ya existen). El stock arranca en cero.
+//
+// Cómo se guarda el stock: cada remito (tabla "remitos") tiene líneas, y cada línea genera uno o dos
+// movimientos (tabla "movimientos"), cada uno con el depósito donde suma o resta. El stock de un depósito es
+// la suma de sus movimientos. Ver efectos() en lib/stock.ts.
 import 'server-only';
 import { neon } from '@neondatabase/serverless';
 import { ESPECIES } from './especies';
-import { cantidadConSigno, claveStock, etiquetaTamano, TAMANO_A_ESPECIFICAR } from './stock';
-import type { Especie, LineaRemito, Movimiento, Stock, TipoMovimiento } from './tipos';
+import { claveStock, efectos, etiquetaTamano, TAMANO_A_ESPECIFICAR } from './stock';
+import type { Especie, LineaRemito, Movimiento, StockPorDeposito, TipoMovimiento } from './tipos';
 
 /** Cómo se entregan las plantas, en el orden en que se muestran. La primera es la que viene elegida al cargar. */
 export const PRESENTACIONES = ['Envasado', 'Maceta', 'Raíz desnuda'];
@@ -35,9 +39,6 @@ export const TAMANOS = [
 // Número cualquiera que identifica el "candado" de la base (ver más abajo).
 const CANDADO = 20261020;
 
-// Cuenta cada movimiento con su signo: las salidas restan, las entradas suman y los ajustes van como están.
-const CANTIDAD_CON_SIGNO = `CASE tipo WHEN 'Salida' THEN -abs(cantidad) WHEN 'Entrada' THEN abs(cantidad) ELSE cantidad END`;
-
 function conexion() {
   const url = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
   if (!url) throw new Error('Falta la variable DATABASE_URL con la conexión a la base de datos (ver README).');
@@ -62,18 +63,16 @@ async function crearTablas() {
   // al primero y no carga los datos dos veces.
   await sql.transaction([
     sql`SELECT pg_advisory_xact_lock(${CANDADO})`,
-    // Cambio del 2026-10-23: el stock pasó de un solo "tamaño" (Maceta 1 L, 3 L...) a "presentación"
-    // (Maceta, Raíz desnuda, Envasado) + "tamaño" (la lista de la planilla). En una base con el formato
-    // anterior (sin presentación) se borran los movimientos (eran inventados), la tabla de tamaños vieja
-    // y los stocks mínimos inventados. Solo pasa una vez.
+    // Cambio del 2026-10-23: el stock pasó a llevarse por depósito (Benavidez, Pilar, Goya). En una base con
+    // el formato anterior (movimientos sin depósito) se borran los remitos y movimientos, que eran pruebas
+    // (lo pidió el vivero), y el stock arranca en cero. Solo pasa una vez.
     sql`DO $$
       BEGIN
         IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'movimientos')
            AND NOT EXISTS (SELECT 1 FROM information_schema.columns
-                           WHERE table_name = 'movimientos' AND column_name = 'presentacion') THEN
+                           WHERE table_name = 'movimientos' AND column_name = 'deposito') THEN
           DROP TABLE movimientos;
-          DROP TABLE IF EXISTS tamanos;
-          UPDATE especies SET minimo = 0;
+          DROP TABLE IF EXISTS remitos;
         END IF;
       END $$`,
     sql`CREATE TABLE IF NOT EXISTS especies (
@@ -82,7 +81,7 @@ async function crearTablas() {
       cientifico text NOT NULL DEFAULT '',
       minimo integer NOT NULL DEFAULT 0
     )`,
-    // Columna agregada después: en una base creada antes, se suma sin tocar los datos.
+    // Columnas agregadas después: en una base creada antes, se suman sin tocar los datos.
     sql`ALTER TABLE especies ADD COLUMN IF NOT EXISTS region text NOT NULL DEFAULT ''`,
     sql`ALTER TABLE especies ADD COLUMN IF NOT EXISTS grupo text NOT NULL DEFAULT 'Árbol'`,
     sql`CREATE TABLE IF NOT EXISTS presentaciones (
@@ -93,39 +92,35 @@ async function crearTablas() {
       nombre text PRIMARY KEY,
       orden integer NOT NULL DEFAULT 0
     )`,
-    sql`CREATE TABLE IF NOT EXISTS movimientos (
-      id serial PRIMARY KEY,
-      fecha date NOT NULL,
-      tipo text NOT NULL CHECK (tipo IN ('Entrada', 'Salida', 'Ajuste')),
-      codigo text NOT NULL REFERENCES especies (codigo),
-      presentacion text NOT NULL REFERENCES presentaciones (nombre),
-      tamano text NOT NULL REFERENCES tamanos (nombre),
-      cantidad integer NOT NULL,
-      responsable text NOT NULL DEFAULT '',
-      observaciones text NOT NULL DEFAULT '',
-      registrado timestamptz NOT NULL DEFAULT now()
-    )`,
-    // Lo que se escribe a mano cuando el tamaño es "Especificar" (vacío en los demás).
-    sql`ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS tamano_detalle text NOT NULL DEFAULT ''`,
-    // Remitos: cada carga junta varios movimientos (líneas) bajo un número. Los movimientos de antes
-    // de los remitos quedan sin número (remito_id vacío).
+    // Un remito: los datos de la carga. Procedencia y destino según el tipo (ver lugaresDelTipo en
+    // lib/stock.ts); con "Proveedor" o "Cliente", en *_detalle va el nombre. En los ajustes, el depósito
+    // va en "destino".
     sql`CREATE TABLE IF NOT EXISTS remitos (
       id serial PRIMARY KEY,
       fecha date NOT NULL,
-      tipo text NOT NULL CHECK (tipo IN ('Entrada', 'Salida', 'Ajuste')),
+      tipo text NOT NULL CHECK (tipo IN ('Entrada', 'Salida', 'Pase', 'Ajuste')),
+      procedencia text NOT NULL DEFAULT '',
+      procedencia_detalle text NOT NULL DEFAULT '',
+      destino text NOT NULL DEFAULT '',
+      destino_detalle text NOT NULL DEFAULT '',
+      destinatario text NOT NULL DEFAULT '',
       responsable text NOT NULL DEFAULT '',
       observaciones text NOT NULL DEFAULT '',
       registrado timestamptz NOT NULL DEFAULT now()
     )`,
-    sql`ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS remito_id integer REFERENCES remitos (id)`,
-    // Opcional: a quién va (o de quién viene) el remito.
-    sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS destinatario text NOT NULL DEFAULT ''`,
-    // Opcionales: de dónde vienen y a dónde van (ver PROCEDENCIAS y DESTINOS en lib/stock.ts).
-    // Con "Proveedor" o "Cliente", en *_detalle va el nombre.
-    sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS procedencia text NOT NULL DEFAULT ''`,
-    sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS procedencia_detalle text NOT NULL DEFAULT ''`,
-    sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS destino text NOT NULL DEFAULT ''`,
-    sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS destino_detalle text NOT NULL DEFAULT ''`,
+    // Cada línea del remito genera uno o dos movimientos: lo que suma (+) o resta (-) en un depósito.
+    // "linea" es el número de línea dentro del remito (en un pase, los dos movimientos tienen la misma).
+    sql`CREATE TABLE IF NOT EXISTS movimientos (
+      id serial PRIMARY KEY,
+      remito_id integer NOT NULL REFERENCES remitos (id),
+      linea integer NOT NULL,
+      deposito text NOT NULL,
+      codigo text NOT NULL REFERENCES especies (codigo),
+      presentacion text NOT NULL REFERENCES presentaciones (nombre),
+      tamano text NOT NULL REFERENCES tamanos (nombre),
+      tamano_detalle text NOT NULL DEFAULT '',
+      cantidad integer NOT NULL
+    )`,
     sql`INSERT INTO especies (codigo, comun, cientifico, region, grupo, minimo)
       SELECT * FROM json_to_recordset(${JSON.stringify(ESPECIES)}::json)
         AS x (codigo text, comun text, cientifico text, region text, grupo text, minimo integer)
@@ -162,18 +157,19 @@ export async function leerCatalogo(): Promise<Catalogo> {
 }
 
 /**
- * El stock actual, sumado por la base de datos: { código: { "presentación · tamaño": cantidad } }.
+ * El stock de cada depósito, sumado por la base de datos:
+ * { depósito: { código: { "presentación · tamaño": cantidad } } }.
  * Con "Especificar", cada tamaño escrito a mano se cuenta aparte (ej. "Maceta · 5 m de altura").
  */
-export async function leerStock(): Promise<Stock> {
+export async function leerStock(): Promise<StockPorDeposito> {
   await prepararBase();
-  const filas = await conexion().query(
-    `SELECT codigo, presentacion, tamano, tamano_detalle, SUM(${CANTIDAD_CON_SIGNO})::int AS cantidad
-     FROM movimientos GROUP BY codigo, presentacion, tamano, tamano_detalle`,
-  );
-  const stock: Stock = {};
+  const filas = await conexion()`
+    SELECT deposito, codigo, presentacion, tamano, tamano_detalle, SUM(cantidad)::int AS cantidad
+    FROM movimientos GROUP BY deposito, codigo, presentacion, tamano, tamano_detalle`;
+  const stock: StockPorDeposito = {};
   for (const f of filas) {
-    (stock[f.codigo] ??= {})[claveStock(f.presentacion, etiquetaTamano(f.tamano, f.tamano_detalle))] = f.cantidad;
+    const clave = claveStock(f.presentacion, etiquetaTamano(f.tamano, f.tamano_detalle));
+    ((stock[f.deposito] ??= {})[f.codigo] ??= {})[clave] = f.cantidad;
   }
   return stock;
 }
@@ -183,10 +179,10 @@ export async function leerUltimos(cantidad: number): Promise<{ movimientos: Movi
   await prepararBase();
   const sql = conexion();
   const [filas, [{ total }]] = await Promise.all([
-    sql`SELECT id, to_char(fecha, 'YYYY-MM-DD') AS fecha, tipo, codigo, presentacion, tamano,
-          tamano_detalle AS "tamanoDetalle", cantidad, responsable, observaciones, registrado::text AS registrado,
-          remito_id AS remito
-        FROM movimientos ORDER BY fecha DESC, id DESC LIMIT ${cantidad}`,
+    sql`SELECT m.id, to_char(r.fecha, 'YYYY-MM-DD') AS fecha, r.tipo, m.deposito, m.codigo, m.presentacion, m.tamano,
+          m.tamano_detalle AS "tamanoDetalle", m.cantidad, r.responsable, r.id AS remito
+        FROM movimientos m JOIN remitos r ON r.id = m.remito_id
+        ORDER BY r.fecha DESC, m.id DESC LIMIT ${cantidad}`,
     sql`SELECT count(*)::int AS total FROM movimientos`,
   ]);
   return { movimientos: filas as Movimiento[], total };
@@ -249,86 +245,56 @@ export async function leerRemito(numero: number): Promise<RemitoGuardado | null>
     sql`SELECT id AS numero, to_char(fecha, 'YYYY-MM-DD') AS fecha, tipo, destinatario, responsable, observaciones,
           procedencia, procedencia_detalle AS "procedenciaDetalle", destino, destino_detalle AS "destinoDetalle"
         FROM remitos WHERE id = ${numero}`,
-    sql`SELECT m.codigo, m.presentacion, m.tamano, m.tamano_detalle AS "tamanoDetalle", m.cantidad,
-          e.comun, e.cientifico
-        FROM movimientos m JOIN especies e ON e.codigo = m.codigo
-        WHERE m.remito_id = ${numero} ORDER BY m.id`,
+    // Una fila por línea (en un pase hay dos movimientos por línea). La cantidad va sin signo,
+    // salvo en los ajustes.
+    sql`SELECT DISTINCT ON (m.linea) m.codigo, m.presentacion, m.tamano, m.tamano_detalle AS "tamanoDetalle",
+          CASE WHEN r.tipo = 'Ajuste' THEN m.cantidad ELSE abs(m.cantidad) END AS cantidad, e.comun, e.cientifico
+        FROM movimientos m JOIN remitos r ON r.id = m.remito_id JOIN especies e ON e.codigo = m.codigo
+        WHERE m.remito_id = ${numero} ORDER BY m.linea, m.id`,
   ]);
   if (!remito) return null;
   return { ...(remito as Omit<RemitoGuardado, 'lineas'>), lineas: lineas as RemitoGuardado['lineas'] };
 }
 
-/** Una combinación de especie, presentación y tamaño a la que no le alcanza el stock. */
-export interface Faltante {
-  codigo: string;
-  presentacion: string;
-  tamano: string;
-  tamano_detalle: string;
-  /** Lo que había antes del remito. */
-  habia: number;
-  /** Lo que el remito suma o resta en total para esa combinación. */
-  cambio: number;
-}
-
 /**
- * Guarda el remito completo, todo junto o nada: si a alguna combinación de especie, presentación y tamaño
- * no le alcanza el stock, no se guarda ninguna línea y se devuelven las que faltan.
- * Si se guarda, devuelve el número de remito.
+ * Guarda el remito completo con todos sus movimientos, en una sola operación (todo o nada),
+ * y devuelve su número. No controla que alcance el stock: un depósito puede quedar en negativo.
  */
-export async function guardarRemito(r: RemitoNuevo): Promise<{ numero: number | null; faltantes: Faltante[] }> {
+export async function guardarRemito(r: RemitoNuevo): Promise<number> {
   await prepararBase();
-  const sql = conexion();
-  const lineas = JSON.stringify(
-    r.lineas.map(l => ({
-      codigo: l.codigo,
-      presentacion: l.presentacion,
-      tamano: l.tamano,
-      tamano_detalle: l.tamanoDetalle,
-      cantidad: l.cantidad,
-      cambio: cantidadConSigno(r.tipo, l.cantidad),
-    })),
-  );
-  // El candado hace que dos personas guardando al mismo tiempo se atiendan de a una,
-  // así ninguna de las dos puede dejar el stock negativo.
-  const [, [resultado]] = await sql.transaction([
-    sql`SELECT pg_advisory_xact_lock(${CANDADO})`,
-    sql.query(
-      `WITH lineas AS (
-         SELECT * FROM json_to_recordset($1::json)
-           AS x (codigo text, presentacion text, tamano text, tamano_detalle text, cantidad integer, cambio integer)
-       ), pedido AS (
-         -- Si el remito tiene dos líneas de lo mismo, se controlan sumadas.
-         SELECT codigo, presentacion, tamano, tamano_detalle, SUM(cambio)::int AS cambio
-         FROM lineas GROUP BY codigo, presentacion, tamano, tamano_detalle
-       ), con_stock AS (
-         SELECT p.*, COALESCE((
-           SELECT SUM(${CANTIDAD_CON_SIGNO}) FROM movimientos m
-           WHERE m.codigo = p.codigo AND m.presentacion = p.presentacion
-             AND m.tamano = p.tamano AND m.tamano_detalle = p.tamano_detalle
-         ), 0)::int AS habia
-         FROM pedido p
-       ), faltantes AS (
-         SELECT * FROM con_stock WHERE habia + cambio < 0
-       ), remito AS (
-         INSERT INTO remitos (fecha, tipo, responsable, observaciones, destinatario,
-                              procedencia, procedencia_detalle, destino, destino_detalle)
-         SELECT $2, $3, $4, $5, $6, $7, $8, $9, $10 WHERE NOT EXISTS (SELECT 1 FROM faltantes)
-         RETURNING id
-       ), guardadas AS (
-         INSERT INTO movimientos
-           (fecha, tipo, codigo, presentacion, tamano, tamano_detalle, cantidad, responsable, observaciones, remito_id)
-         SELECT $2, $3, l.codigo, l.presentacion, l.tamano, l.tamano_detalle, l.cantidad, $4, $5, remito.id
-         FROM lineas l CROSS JOIN remito
-         RETURNING id
-       )
-       SELECT (SELECT id FROM remito) AS numero,
-              (SELECT count(*) FROM guardadas) AS lineas,
-              COALESCE((SELECT json_agg(faltantes) FROM faltantes), '[]'::json) AS faltantes`,
-      [
-        lineas, r.fecha, r.tipo, r.responsable, r.observaciones, r.destinatario,
-        r.procedencia, r.procedenciaDetalle, r.destino, r.destinoDetalle,
-      ],
+  const movimientos = JSON.stringify(
+    r.lineas.flatMap((l, linea) =>
+      efectos(r.tipo, r.procedencia, r.destino, l.cantidad).map(e => ({
+        linea,
+        deposito: e.deposito,
+        codigo: l.codigo,
+        presentacion: l.presentacion,
+        tamano: l.tamano,
+        tamano_detalle: l.tamanoDetalle,
+        cantidad: e.cantidad,
+      })),
     ),
-  ]);
-  return { numero: resultado.numero ?? null, faltantes: resultado.faltantes as Faltante[] };
+  );
+  const [resultado] = await conexion().query(
+    `WITH remito AS (
+       INSERT INTO remitos (fecha, tipo, responsable, observaciones, destinatario,
+                            procedencia, procedencia_detalle, destino, destino_detalle)
+       VALUES ($2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING id
+     ), guardados AS (
+       INSERT INTO movimientos (remito_id, linea, deposito, codigo, presentacion, tamano, tamano_detalle, cantidad)
+       SELECT remito.id, x.linea, x.deposito, x.codigo, x.presentacion, x.tamano, x.tamano_detalle, x.cantidad
+       FROM json_to_recordset($1::json)
+         AS x (linea integer, deposito text, codigo text, presentacion text, tamano text, tamano_detalle text,
+               cantidad integer)
+       CROSS JOIN remito
+       RETURNING id
+     )
+     SELECT id AS numero FROM remito`,
+    [
+      movimientos, r.fecha, r.tipo, r.responsable, r.observaciones, r.destinatario,
+      r.procedencia, r.procedenciaDetalle, r.destino, r.destinoDetalle,
+    ],
+  );
+  return Number(resultado.numero);
 }

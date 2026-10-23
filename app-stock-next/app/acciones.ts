@@ -2,14 +2,7 @@
 // Lo que se ejecuta en el servidor cuando alguien guarda un remito.
 import { revalidatePath } from 'next/cache';
 import { guardarRemito, leerCatalogo } from '@/lib/almacen';
-import {
-  DESTINOS,
-  etiquetaTamano,
-  LUGARES_A_ESPECIFICAR,
-  numeroRemito,
-  PROCEDENCIAS,
-  TAMANO_A_ESPECIFICAR,
-} from '@/lib/stock';
+import { LUGARES_A_ESPECIFICAR, lugaresDelTipo, numeroRemito, TAMANO_A_ESPECIFICAR, type ReglaLugar } from '@/lib/stock';
 import { TIPOS, type LineaRemito, type TipoMovimiento } from '@/lib/tipos';
 
 export interface Resultado {
@@ -34,26 +27,23 @@ export interface RemitoEnviado {
 
 const MAXIMO_LINEAS = 200;
 
-// Procedencia o destino: vacío o de la lista; con "Proveedor" o "Cliente" el nombre es obligatorio.
-// Devuelve el lugar y su detalle limpios, o un mensaje de error.
-function revisarLugar(
-  que: 'procedencia' | 'destino',
-  lugar: unknown,
-  detalle: unknown,
-  opciones: string[],
-): { lugar: string; detalle: string } | string {
-  const l = String(lugar ?? '');
-  if (l && !opciones.includes(l)) return `La ${que} "${l}" no existe.`;
-  if (!LUGARES_A_ESPECIFICAR.includes(l)) return { lugar: l, detalle: '' };
-  const d = limpiar(detalle);
-  if (!d) return `Escribí qué ${l.toLowerCase()} es (${que}).`;
-  if (d.length > 100) return `El nombre del ${l.toLowerCase()} es muy largo (máximo 100 letras).`;
-  return { lugar: l, detalle: d };
-}
-
 // Saca los espacios de más para que "5 m" y "5  m " sumen al mismo stock.
 function limpiar(texto: unknown): string {
   return String(texto ?? '').trim().replace(/\s+/g, ' ');
+}
+
+// Revisa un lugar (procedencia o destino) contra la regla del tipo de movimiento.
+// Con "Proveedor" o "Cliente" el nombre es obligatorio. Devuelve el lugar y su detalle limpios, o un error.
+function revisarLugar(regla: ReglaLugar | null, lugar: unknown, detalle: unknown): { lugar: string; detalle: string } | string {
+  const l = String(lugar ?? '');
+  if (!regla) return { lugar: '', detalle: '' };
+  if (!l) return regla.obligatorio ? `Elegí el ${regla.titulo.toLowerCase()}.` : { lugar: '', detalle: '' };
+  if (!regla.opciones.includes(l)) return `"${l}" no es una opción válida para ${regla.titulo.toLowerCase()}.`;
+  if (!LUGARES_A_ESPECIFICAR.includes(l)) return { lugar: l, detalle: '' };
+  const d = limpiar(detalle);
+  if (!d) return `Escribí qué ${l.toLowerCase()} es.`;
+  if (d.length > 100) return `El nombre del ${l.toLowerCase()} es muy largo (máximo 100 letras).`;
+  return { lugar: l, detalle: d };
 }
 
 export async function registrarRemito(_anterior: Resultado | null, remito: RemitoEnviado): Promise<Resultado> {
@@ -66,14 +56,19 @@ export async function registrarRemito(_anterior: Resultado | null, remito: Remit
   }
   if (limpiar(remito.destinatario).length > 100) return { ok: false, mensaje: 'El destinatario es muy largo (máximo 100 letras).' };
   if (remito.lineas.length > MAXIMO_LINEAS) return { ok: false, mensaje: `El remito tiene más de ${MAXIMO_LINEAS} líneas.` };
-  const procedencia = revisarLugar('procedencia', remito.procedencia, remito.procedenciaDetalle, PROCEDENCIAS);
+
+  const reglas = lugaresDelTipo(tipo);
+  const procedencia = revisarLugar(reglas.procedencia, remito.procedencia, remito.procedenciaDetalle);
   if (typeof procedencia === 'string') return { ok: false, mensaje: procedencia };
-  const destino = revisarLugar('destino', remito.destino, remito.destinoDetalle, DESTINOS);
+  const destino = revisarLugar(reglas.destino, remito.destino, remito.destinoDetalle);
   if (typeof destino === 'string') return { ok: false, mensaje: destino };
+  if (tipo === 'Pase' && procedencia.lugar === destino.lugar) {
+    return { ok: false, mensaje: 'En un pase, el depósito de origen y el de destino tienen que ser distintos.' };
+  }
 
   try {
     const { especies, presentaciones, tamanos } = await leerCatalogo();
-    const nombre = new Map(especies.map(e => [e.codigo, e.comun]));
+    const codigos = new Set(especies.map(e => e.codigo));
     const lineas: LineaRemito[] = [];
 
     // Se revisa línea por línea, aunque la pantalla ya lo haya controlado.
@@ -82,19 +77,19 @@ export async function registrarRemito(_anterior: Resultado | null, remito: Remit
       const cantidad = Number(l.cantidad);
       const tamano = String(l.tamano ?? '');
       const tamanoDetalle = tamano === TAMANO_A_ESPECIFICAR ? limpiar(l.tamanoDetalle) : '';
-      if (!nombre.has(String(l.codigo))) return { ok: false, mensaje: `${n}: la especie no existe.` };
+      if (!codigos.has(String(l.codigo))) return { ok: false, mensaje: `${n}: la especie no existe.` };
       if (!presentaciones.includes(String(l.presentacion))) return { ok: false, mensaje: `${n}: la presentación no existe.` };
       if (!tamanos.includes(tamano)) return { ok: false, mensaje: `${n}: el tamaño no existe.` };
       if (tamano === TAMANO_A_ESPECIFICAR && !tamanoDetalle) return { ok: false, mensaje: `${n}: falta escribir el tamaño.` };
       if (tamanoDetalle.length > 60) return { ok: false, mensaje: `${n}: el tamaño escrito es muy largo.` };
       if (!Number.isInteger(cantidad) || cantidad === 0) return { ok: false, mensaje: `${n}: la cantidad no es válida.` };
       if (tipo !== 'Ajuste' && cantidad < 0) {
-        return { ok: false, mensaje: `${n}: en entradas y salidas la cantidad va sin signo menos.` };
+        return { ok: false, mensaje: `${n}: la cantidad va sin signo menos (solo los ajustes pueden ser negativos).` };
       }
       lineas.push({ codigo: String(l.codigo), presentacion: String(l.presentacion), tamano, tamanoDetalle, cantidad });
     }
 
-    const { numero, faltantes } = await guardarRemito({
+    const numero = await guardarRemito({
       tipo,
       fecha,
       destinatario: limpiar(remito.destinatario),
@@ -106,19 +101,6 @@ export async function registrarRemito(_anterior: Resultado | null, remito: Remit
       observaciones: String(remito.observaciones ?? '').trim(),
       lineas,
     });
-
-    if (numero === null) {
-      const detalle = faltantes
-        .map(f => {
-          const planta = `${nombre.get(f.codigo)} (${f.presentacion.toLowerCase()}, ${etiquetaTamano(f.tamano, f.tamano_detalle)})`;
-          return `${planta}: hay ${f.habia} y el remito necesita ${Math.abs(f.cambio)}`;
-        })
-        .join('; ');
-      // El stock cambió mientras se armaba el remito (alguien más cargó algo): se actualiza la pantalla
-      // para que las líneas que no alcanzan se marquen en rojo.
-      revalidatePath('/', 'layout');
-      return { ok: false, mensaje: `No se guardó nada porque no alcanza el stock. ${detalle}.` };
-    }
 
     revalidatePath('/', 'layout');
     const plantas = lineas.reduce((suma, l) => suma + Math.abs(l.cantidad), 0);
