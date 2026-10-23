@@ -45,6 +45,8 @@ async function crearTablas() {
       cientifico text NOT NULL DEFAULT '',
       minimo integer NOT NULL DEFAULT 0
     )`,
+    // Columna agregada después: en una base creada antes, se suma sin tocar los datos.
+    sql`ALTER TABLE especies ADD COLUMN IF NOT EXISTS region text NOT NULL DEFAULT ''`,
     sql`CREATE TABLE IF NOT EXISTS tamanos (
       nombre text PRIMARY KEY,
       orden integer NOT NULL DEFAULT 0
@@ -60,9 +62,9 @@ async function crearTablas() {
       observaciones text NOT NULL DEFAULT '',
       registrado timestamptz NOT NULL DEFAULT now()
     )`,
-    sql`INSERT INTO especies (codigo, comun, cientifico, minimo)
+    sql`INSERT INTO especies (codigo, comun, cientifico, region, minimo)
       SELECT * FROM json_to_recordset(${JSON.stringify(datos.especies)}::json)
-        AS x (codigo text, comun text, cientifico text, minimo integer)
+        AS x (codigo text, comun text, cientifico text, region text, minimo integer)
       WHERE NOT EXISTS (SELECT 1 FROM especies)`,
     sql`INSERT INTO tamanos (nombre, orden)
       SELECT * FROM json_to_recordset(${JSON.stringify(tamanos)}::json) AS x (nombre text, orden integer)
@@ -82,7 +84,7 @@ export async function leerCatalogo(): Promise<{ especies: Especie[]; tamanos: st
   await prepararBase();
   const sql = conexion();
   const [especies, tamanos] = await Promise.all([
-    sql`SELECT codigo, comun, cientifico, minimo FROM especies ORDER BY comun`,
+    sql`SELECT codigo, comun, cientifico, region, minimo FROM especies ORDER BY comun`,
     sql`SELECT nombre FROM tamanos ORDER BY orden, nombre`,
   ]);
   return { especies: especies as Especie[], tamanos: tamanos.map(t => String(t.nombre)) };

@@ -81,8 +81,33 @@ la configura sola y tiene plan gratis.
 y el stock dio igual que antes (1.519 plantas). Se rechazó una salida sin stock y se guardó una correcta.
 El movimiento de prueba se borró después. `npm run build` compila sin errores.
 
+## 2026-10-23: listado de especies nativas
+
+**Pedido:** incluir todas las especies que figuran en SENASA.
+
+**Lo que se encontró:** SENASA no tiene un listado de árboles nativos. Su único listado para viveros es el
+de "especies priorizadas según riesgo fitosanitario" (Resolución SENASA 64/2026): cítricos, frutales de
+carozo y pepita, palmeras, orquídeas, banano, palta, vid, olivo, kiwi, eucaliptus, papa semilla, frutilla,
+tomate y pimiento. INASE remite al "Catálogo de las Plantas Vasculares del Cono Sur" (Instituto Darwinion),
+que tiene miles de especies y no es un listado de vivero.
+
+**Decisión** (elegida por el usuario): cargar un listado de árboles y arbustos nativos de uso en viveros.
+
+**Qué se hizo**
+- `lib/especies-nativas.ts`: 133 especies (las 23 de antes y 110 nuevas), con nombre común, científico y
+  región: Yungas, Selva paranaense, Chaco, Espinal, Pampa, Sierras, Delta y ribera, Monte, Patagonia andina.
+  Lo armó Claude: **conviene que alguien del vivero lo revise** (nombres, regiones, especies que falten).
+- Nueva columna `region` en la tabla `especies`, que se agrega sola en bases ya creadas.
+- `npm.cmd run cargar-especies`: agrega las especies que falten sin tocar las existentes. Se corrió sobre
+  la base: 110 agregadas, 23 con región cargada, 133 en total. Corrido de nuevo, no cambió nada.
+- Pantalla Stock: muestra la región, filtro por región, y de entrada solo las especies con stock
+  (con opción de ver todas). Al buscar por nombre aparecen también las especies sin stock.
+
+**Probado:** compila sin errores; los filtros y la búsqueda funcionan; el formulario ofrece las 133 especies;
+sin desbordes en celu (320 px), tablet ni compu.
+
 **Pendiente**
-- [ ] Subir los cambios a GitHub y confirmar que Vercel la publica sin error.
-- [ ] Revisar en Vercel que el Root Directory sea `app-stock-next` y que exista `DATABASE_URL`.
+- [ ] Revisión del listado de especies por alguien del vivero.
+- [ ] Subir estos cambios a GitHub y confirmar que Vercel la publica sin error.
 - [ ] **Agregar inicio de sesión**: hoy cualquiera con el link puede cargar movimientos.
 - [ ] Cambiar la contraseña de la base en Neon (quedó escrita en el chat) y actualizar `.env.local`.

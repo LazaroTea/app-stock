@@ -5,6 +5,8 @@ export interface Especie {
   codigo: string;
   comun: string;
   cientifico: string;
+  /** Regiones donde es nativa, separadas por coma (ej. "Chaco, Espinal"). */
+  region: string;
   /** Mínimo para el total de la especie (todos los tamaños). 0 = sin aviso. */
   minimo: number;
 }

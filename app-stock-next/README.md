@@ -4,8 +4,11 @@ Versión paralela de `../app-stock` hecha con **Next.js**, una herramienta para 
 Hace lo mismo que la versión de Google (Stock, Cargar, Últimos), pero se publica en **Vercel** y guarda
 los datos en una base de datos **Neon** (Postgres) en internet.
 
-> **Los datos son inventados.** 23 especies nativas reales con stocks mínimos, tamaños y 127
-> movimientos entre julio y octubre de 2026, generados al azar. Sirven solo para probar.
+> **Los movimientos son inventados.** 127 movimientos entre julio y octubre de 2026, generados al azar
+> sobre 23 de las especies. Sirven solo para probar.
+>
+> **Las especies son reales:** 133 árboles y arbustos nativos de Argentina, con su región
+> (ver `lib/especies-nativas.ts`). No es un listado oficial: SENASA no publica uno de especies nativas.
 
 > **Atención: la app no tiene contraseña.** Cualquiera que tenga el link de Vercel puede ver el stock
 > y cargar movimientos. No compartas el link hasta que sumemos el inicio de sesión.
@@ -49,8 +52,11 @@ queda en los datos reales.
 | Tablet (640 a 1023 px) | Pestañas arriba, en el encabezado. Dos tarjetas por fila. |
 | Compu (1024 px o más) | Tres tarjetas por fila. En **Cargar**, un panel al costado muestra el stock de la especie elegida en cada tamaño. |
 
-Arriba de la lista hay tres números: total de plantas, especies y especies bajo el mínimo.
+Arriba de la lista hay tres números: total de plantas, especies con stock y especies bajo el mínimo.
 Tocando el de "bajo el mínimo" se ven solo esas especies.
+
+La lista muestra, de entrada, solo las especies **con stock**. Con los filtros se puede elegir una
+**región** o ver **todas** las especies. Al buscar por nombre aparecen también las que no tienen stock.
 
 ## Archivos
 
@@ -64,7 +70,9 @@ Tocando el de "bajo el mínimo" se ven solo esas especies.
 | `app/globals.css` | Estilos y cómo se acomoda en celu, tablet y compu. |
 | `lib/stock.ts` | Reglas del stock (las salidas restan, etc.) y ayudas para la pantalla. |
 | `lib/almacen.ts` | Lee y guarda los datos en la base Neon. Crea las tablas la primera vez. |
-| `lib/datos-inventados.ts` | Las especies y los movimientos de ejemplo. |
+| `lib/especies-nativas.ts` | El listado de las 133 especies nativas, con su región. |
+| `lib/datos-inventados.ts` | Los movimientos de ejemplo. |
+| `scripts/cargar-especies.ts` | Agrega a la base las especies del listado que falten. |
 | `lib/tipos.ts` | La forma de los datos (especie, movimiento). |
 | `.env.local` | La conexión a la base (solo en tu compu, no está en GitHub). |
 
@@ -72,7 +80,7 @@ Tocando el de "bajo el mínimo" se ven solo esas especies.
 
 Hay tres tablas:
 
-- **especies**: código, nombre común, nombre científico, stock mínimo.
+- **especies**: código, nombre común, nombre científico, región, stock mínimo.
 - **tamanos**: los tamaños de envase y su orden (de chico a grande).
 - **movimientos**: cada entrada, salida o ajuste.
 
@@ -80,7 +88,21 @@ El stock no se guarda: la base lo calcula sumando los movimientos.
 
 - La primera vez que se abre la app, crea las tablas y carga los datos inventados. Solo lo hace si están
   **vacías**: nunca pisa datos que ya existen.
-- Las tablas se pueden ver y editar desde el panel de Neon (**Tables**).
+- Las tablas se pueden ver y editar desde el panel de Neon (**Tables**). Por ejemplo, para cambiar el
+  stock mínimo de una especie.
+
+### Agregar o corregir especies
+
+1. Editá `lib/especies-nativas.ts`: una línea por especie (código, nombre común, nombre científico,
+   región y, si querés, stock mínimo). El código tiene que ser único.
+2. En una terminal, dentro de esta carpeta:
+
+   ```bash
+   npm.cmd run cargar-especies
+   ```
+
+   Agrega a la base las especies nuevas. Las que ya estaban no se tocan (para corregir una que ya existe,
+   editala desde el panel de Neon). Se puede correr las veces que quieras: no duplica nada.
 - **Para volver a los datos de ejemplo:** en el panel de Neon (**SQL Editor**) borrá las tres tablas
   (`DROP TABLE movimientos, tamanos, especies;`) y abrí la app: las vuelve a crear.
 - Si dos personas guardan al mismo tiempo, la base las atiende de a una, así nadie deja el stock negativo.

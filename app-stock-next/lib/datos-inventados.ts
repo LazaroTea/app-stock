@@ -1,33 +1,11 @@
 // Datos de ejemplo INVENTADOS para probar la app. No son datos reales del vivero.
 // Se cargan en la base de datos solo la primera vez, cuando las tablas están vacías.
+import { ESPECIES_NATIVAS } from './especies-nativas';
 import { cantidadConSigno } from './stock';
-import type { Datos, Especie, Movimiento, TipoMovimiento } from './tipos';
+import type { Datos, Movimiento, TipoMovimiento } from './tipos';
 
-const ESPECIES: Especie[] = [
-  { codigo: 'ALG', comun: 'Algarrobo blanco', cientifico: 'Prosopis alba', minimo: 50 },
-  { codigo: 'ALN', comun: 'Algarrobo negro', cientifico: 'Prosopis nigra', minimo: 30 },
-  { codigo: 'ANC', comun: 'Anchico colorado', cientifico: 'Parapiptadenia rigida', minimo: 10 },
-  { codigo: 'ARR', comun: 'Arrayán', cientifico: 'Blepharocalyx salicifolius', minimo: 10 },
-  { codigo: 'CEI', comun: 'Ceibo', cientifico: 'Erythrina crista-galli', minimo: 20 },
-  { codigo: 'CHL', comun: 'Chal-chal', cientifico: 'Allophylus edulis', minimo: 15 },
-  { codigo: 'CHN', comun: 'Chañar', cientifico: 'Geoffroea decorticans', minimo: 20 },
-  { codigo: 'COR', comun: 'Coronillo', cientifico: 'Scutia buxifolia', minimo: 15 },
-  { codigo: 'CUR', comun: 'Curupí', cientifico: 'Sapium haematospermum', minimo: 10 },
-  { codigo: 'ESP', comun: 'Espinillo', cientifico: 'Vachellia caven', minimo: 30 },
-  { codigo: 'ING', comun: 'Ingá', cientifico: 'Inga uruguensis', minimo: 10 },
-  { codigo: 'JAC', comun: 'Jacarandá', cientifico: 'Jacaranda mimosifolia', minimo: 15 },
-  { codigo: 'LAP', comun: 'Lapacho rosado', cientifico: 'Handroanthus impetiginosus', minimo: 20 },
-  { codigo: 'MOL', comun: 'Molle', cientifico: 'Schinus longifolius', minimo: 20 },
-  { codigo: 'PAL', comun: 'Palo borracho', cientifico: 'Ceiba speciosa', minimo: 10 },
-  { codigo: 'PIT', comun: 'Pitanga', cientifico: 'Eugenia uniflora', minimo: 20 },
-  { codigo: 'QBL', comun: 'Quebracho blanco', cientifico: 'Aspidosperma quebracho-blanco', minimo: 15 },
-  { codigo: 'QCO', comun: 'Quebracho colorado chaqueño', cientifico: 'Schinopsis balansae', minimo: 10 },
-  { codigo: 'SAU', comun: 'Sauce criollo', cientifico: 'Salix humboldtiana', minimo: 25 },
-  { codigo: 'SDT', comun: 'Sombra de toro', cientifico: 'Jodina rhombifolia', minimo: 10 },
-  { codigo: 'TAL', comun: 'Tala', cientifico: 'Celtis tala', minimo: 40 },
-  { codigo: 'TIM', comun: 'Timbó', cientifico: 'Enterolobium contortisiliquum', minimo: 15 },
-  { codigo: 'TIP', comun: 'Tipa', cientifico: 'Tipuana tipu', minimo: 25 },
-];
+// Los movimientos inventados se generan solo para las especies con stock mínimo (las 23 originales).
+const CON_MOVIMIENTOS = ESPECIES_NATIVAS.filter(e => e.minimo > 0);
 
 const TAMANOS = ['Maceta 1 L', 'Maceta 3 L', 'Maceta 10 L', 'Envase 20 L'];
 const RESPONSABLES = ['Ana', 'Luis', 'Marta', 'Diego'];
@@ -63,7 +41,7 @@ export function crearDatosIniciales(): Datos {
     const fechaTexto = fecha.toLocaleDateString('sv-SE'); // AAAA-MM-DD
 
     for (let i = entre(0, 3); i > 0; i--) {
-      const especie = elegir(ESPECIES);
+      const especie = elegir(CON_MOVIMIENTOS);
       const tamano = elegir(TAMANOS);
       const clave = especie.codigo + '|' + tamano;
       const hay = stock[clave] ?? 0;
@@ -97,5 +75,5 @@ export function crearDatosIniciales(): Datos {
     }
   }
 
-  return { especies: ESPECIES, tamanos: TAMANOS, movimientos };
+  return { especies: ESPECIES_NATIVAS, tamanos: TAMANOS, movimientos };
 }

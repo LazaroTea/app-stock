@@ -93,7 +93,8 @@ button.indicador { cursor: pointer; }
 .indicador.alerta.activo { border-color: var(--rojo); background: var(--rojo-claro); }
 
 .filtros { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-.filtros input[type=search] { flex: 1; min-width: 0; }
+.filtros input[type=search] { flex: 1 1 100%; min-width: 0; }
+.filtros select { flex: 1 1 0; min-width: 0; }
 
 .grilla { display: grid; grid-template-columns: 1fr; gap: 10px; }
 .tarjeta { background: var(--blanco); border: 1px solid var(--borde); border-radius: 10px; padding: 12px; }
@@ -101,6 +102,8 @@ button.indicador { cursor: pointer; }
 .fila { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
 .nombre { font-weight: 600; }
 .cientifico { font-style: italic; color: var(--gris); font-size: .9rem; }
+.region { color: var(--gris); font-size: .8rem; margin-top: 2px; }
+.tarjeta.sin-stock .total { color: var(--gris); font-weight: 400; }
 .total { font-size: 1.3rem; font-weight: 700; white-space: nowrap; }
 .bajo .total { color: var(--rojo); }
 .aviso { color: var(--rojo); font-size: .85rem; margin-top: 4px; }
@@ -155,6 +158,10 @@ tbody tr:last-child td { border-bottom: 0; }
   .indicador .nombre-indicador { font-size: .85rem; }
 
   .grilla { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+
+  /* Buscador y filtros en una sola fila. */
+  .filtros input[type=search] { flex: 2 1 260px; }
+  .filtros select { flex: 1 1 180px; }
 
   .formulario { max-width: 640px; }
 }
