@@ -143,10 +143,39 @@ con 133 especies, 0 mínimos y 0 movimientos. Compila sin errores.
 **Nota:** la planilla de cotizaciones también tiene un desplegable de especies con unas 85, muchas exóticas
 (fresno, liquidámbar, olivo, ginkgo, etc.) que no están en el listado de nativas.
 
+## 2026-10-23: palmeras y estética de la marca
+
+**Pedido:** sumar las palmeras que se pueden comerciar e incorporar la estética de la marca, a partir de un
+presupuesto (PDF de Native S.A.) y de https://www.nativetrees.com.ar/.
+
+**Palmeras**
+- La Resolución SENASA 64/2026 pone a **todas** las palmeras (familia Arecaceae) y a la cica (Cycas revoluta)
+  en su listado de especies priorizadas: se pueden comerciar, pero con vivero inscripto en el RENFO y los
+  requisitos sanitarios de esa resolución.
+- Se sumaron 18 especies: 4 palmeras nativas (yatay poñí, mbocayá, caranday serrano, carandillo), 13 exóticas
+  (entre ellas las de la web: butiagrus, Phoenix canariensis, Phoenix dactylifera, Washingtonia) y la cica.
+  Pindó, caranday y palmera yatay ya estaban: ahora quedan marcadas como palmeras. Total: 151 especies,
+  21 palmeras.
+- No se incluyó el palmito (Euterpe edulis), porque es una especie protegida.
+- Nueva columna `grupo` (Árbol / Palmera) en la base. Las palmeras exóticas llevan región "Exótica".
+- `lib/especies-nativas.ts` pasó a llamarse `lib/especies.ts`, porque ahora también tiene especies exóticas.
+- Pantalla Stock: filtro "Tipo" (árboles / palmeras) y etiqueta **Palmera** en cada tarjeta.
+
+**Estética** (sacada de la web y del presupuesto)
+- Colores: verde oliva `#646945` como principal, `#505437`, `#7f8463` en los encabezados de tabla (como el
+  presupuesto), salvia `#b8bca6` y crema `#f9f1d9` (el color del logo).
+- Tipografías: Montserrat (títulos, números, botones) y Raleway (texto), las de la web.
+- Encabezado verde con el logo de la web (en crema, recortado para que no tenga márgenes) y "STOCK"; en la
+  compu, el lema "Movemos naturaleza. Creamos paisaje". Ícono de pestaña: el árbol del logo sobre verde.
+- Etiquetas en mayúsculas chicas y espaciadas, como "DESCRIPCIÓN" en el presupuesto.
+
+**Probado:** compila sin errores. Filtro de palmeras (21), panel de stock en Cargar y la lista en compu,
+tablet y celu (320 px y 375 px): sin desbordes ni textos cortados.
+
 **Pendiente**
-- [ ] Revisión del listado de especies por alguien del vivero.
-- [ ] ¿Sumar las especies exóticas de la planilla de cotizaciones?
-- [ ] Subir estos cambios a GitHub y confirmar que Vercel la publica sin error. **Hasta que se suba, la
-      versión publicada falla**: la base ya tiene el formato nuevo y el código publicado es el anterior.
+- [ ] Revisión del listado de especies (árboles y palmeras) por alguien del vivero.
+- [ ] ¿Sumar las otras especies exóticas de la planilla de cotizaciones y de la web (fresnos, liquidámbar,
+      olivo, etc.)?
+- [ ] Subir estos cambios a GitHub y confirmar que Vercel la publica sin error.
 - [ ] **Agregar inicio de sesión**: hoy cualquiera con el link puede cargar movimientos.
 - [ ] Cambiar la contraseña de la base en Neon (quedó escrita en el chat) y actualizar `.env.local`.

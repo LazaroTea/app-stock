@@ -1,4 +1,4 @@
-# App de stock del vivero: versión Next.js
+# App de stock de Native: versión Next.js
 
 Versión paralela de `../app-stock` hecha con **Next.js**, una herramienta para armar aplicaciones web con código propio.
 Hace lo mismo que la versión de Google (Stock, Cargar, Últimos), pero se publica en **Vercel** y guarda
@@ -7,8 +7,13 @@ los datos en una base de datos **Neon** (Postgres) en internet.
 El stock se lleva por **especie**, **presentación** (Maceta, Raíz desnuda o Envasado) y **tamaño**
 (la lista de la planilla de cotizaciones del vivero: 6-8, 12-14, 3Lts, Ejemplar, etc.).
 
-> **El stock arranca en cero.** Las especies son reales: 133 árboles y arbustos nativos de Argentina, con su
-> región (ver `lib/especies-nativas.ts`). No es un listado oficial: SENASA no publica uno de especies nativas.
+> **El stock arranca en cero.** Las especies son reales: 151 en total (ver `lib/especies.ts`):
+> 130 árboles y arbustos nativos de Argentina y 21 palmeras (7 nativas, 13 exóticas y la cica).
+> No es un listado oficial: SENASA no publica uno de especies nativas.
+>
+> **Palmeras y SENASA:** la Resolución SENASA 64/2026 incluye a todas las palmeras (y a la cica) en su listado
+> de especies priorizadas. Se pueden comerciar, pero el vivero tiene que estar inscripto en el RENFO y cumplir
+> los requisitos sanitarios de esa resolución. En la app aparecen con la etiqueta **Palmera**.
 
 > **Atención: la app no tiene contraseña.** Cualquiera que tenga el link de Vercel puede ver el stock
 > y cargar movimientos. No compartas el link hasta que sumemos el inicio de sesión.
@@ -44,12 +49,26 @@ queda en los datos reales.
 > **¿Aparece "404" o la página sin colores?** Cortá la app, borrá la carpeta `.next` y volvé a abrirla.
 > Pasa cuando quedaron restos de una compilación (`npm.cmd run build`).
 
+## Estética
+
+Usa la identidad de la marca Native (de nativetrees.com.ar y de los presupuestos):
+
+- **Colores:** verde oliva `#646945` (principal), `#505437` (oscuro), `#7f8463` (encabezados de tabla,
+  como en los presupuestos), salvia `#b8bca6`, y crema `#f9f1d9` (el color del logo).
+- **Tipografías:** Montserrat para títulos, botones y números; Raleway para el texto. Se cargan desde
+  Google Fonts al compilar.
+- **Logo:** `public/logo-native.png` (el de la web, en crema, sobre el encabezado verde) y
+  `public/icono-native.png` (el árbol solo). El ícono de la pestaña del navegador es `app/icon.svg`.
+- En la compu, el encabezado muestra el lema "Movemos naturaleza. Creamos paisaje".
+
+Los colores están todos juntos al principio de `app/globals.css`: para cambiar uno, se cambia ahí.
+
 ## Cómo se usa
 
 - **Stock:** cada especie muestra su total y el detalle por presentación y tamaño (ej. "Raíz desnuda · 12-14RD: 7").
   Arriba hay tres números: total de plantas, especies con stock y especies bajo el mínimo (tocándolo se ven
   solo esas). De entrada se ven solo las especies **con stock**; con los filtros se elige una **región** o
-  se ven **todas**. Al buscar por nombre aparecen también las que no tienen stock.
+  se ven **todas**; también se puede ver **solo árboles** o **solo palmeras**. Al buscar por nombre aparecen también las que no tienen stock.
 - **Cargar:** tipo de movimiento, especie, presentación (botones), tamaño (desplegable), cantidad y fecha.
   El tamaño no viene elegido de entrada, para que no se guarde uno por descuido.
 - **Últimos:** los últimos 30 movimientos.
@@ -69,10 +88,11 @@ queda en los datos reales.
 | `app/ultimos/page.tsx` | Pantalla **Últimos**: los últimos 30 movimientos. |
 | `app/acciones.ts` | Lo que pasa en el servidor al guardar un movimiento (validaciones incluidas). |
 | `app/layout.tsx`, `app/Navegacion.tsx` | Encabezado y pestañas. |
-| `app/globals.css` | Estilos y cómo se acomoda en celu, tablet y compu. |
+| `app/globals.css` | Colores de la marca, estilos y cómo se acomoda en celu, tablet y compu. |
+| `public/`, `app/icon.svg` | Logo de Native y el ícono de la pestaña. |
 | `lib/stock.ts` | Reglas del stock (las salidas restan, etc.) y ayudas para la pantalla. |
 | `lib/almacen.ts` | Lee y guarda los datos en la base Neon. Crea las tablas la primera vez. Tiene las listas iniciales de presentaciones y tamaños. |
-| `lib/especies-nativas.ts` | El listado de las 133 especies nativas, con su región. |
+| `lib/especies.ts` | El listado de las 151 especies (árboles nativos y palmeras), con su región y grupo. |
 | `lib/tipos.ts` | La forma de los datos (especie, movimiento). |
 | `scripts/cargar-especies.ts` | Agrega a la base las especies del listado que falten. |
 | `.env.local` | La conexión a la base (solo en tu compu, no está en GitHub). |
@@ -81,7 +101,7 @@ queda en los datos reales.
 
 Hay cuatro tablas:
 
-- **especies**: código, nombre común, nombre científico, región, stock mínimo.
+- **especies**: código, nombre común, nombre científico, región (o "Exótica"), grupo (Árbol o Palmera), stock mínimo.
 - **presentaciones**: Maceta, Raíz desnuda, Envasado (y su orden).
 - **tamanos**: los tamaños y su orden.
 - **movimientos**: cada entrada, salida o ajuste, con su presentación y tamaño.
@@ -97,15 +117,15 @@ El stock no se guarda: la base lo calcula sumando los movimientos.
 
 ### Agregar o corregir especies
 
-1. Editá `lib/especies-nativas.ts`: una línea por especie (código, nombre común, nombre científico,
-   región y, si querés, stock mínimo). El código tiene que ser único.
+1. Editá `lib/especies.ts`: una línea por especie, con `arbol(...)` o `palmera(...)` (código, nombre común,
+   nombre científico, región y, si querés, stock mínimo). El código tiene que ser único.
 2. En una terminal, dentro de esta carpeta:
 
    ```bash
    npm.cmd run cargar-especies
    ```
 
-   Agrega a la base las especies nuevas. Las que ya estaban no se tocan (para corregir una que ya existe,
+   Agrega a la base las especies nuevas y corrige el grupo (Árbol o Palmera) de las que ya estaban. Lo demás no se toca (para corregir una que ya existe,
    editala desde el panel de Neon). Se puede correr las veces que quieras: no duplica nada.
 
 ## Publicarla en Vercel

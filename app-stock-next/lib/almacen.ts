@@ -6,7 +6,7 @@
 // (solo si están vacías: nunca pisa datos que ya existen). El stock arranca en cero.
 import 'server-only';
 import { neon } from '@neondatabase/serverless';
-import { ESPECIES_NATIVAS } from './especies-nativas';
+import { ESPECIES } from './especies';
 import { claveStock } from './stock';
 import type { Especie, Movimiento, Stock, TipoMovimiento } from './tipos';
 
@@ -83,6 +83,7 @@ async function crearTablas() {
     )`,
     // Columna agregada después: en una base creada antes, se suma sin tocar los datos.
     sql`ALTER TABLE especies ADD COLUMN IF NOT EXISTS region text NOT NULL DEFAULT ''`,
+    sql`ALTER TABLE especies ADD COLUMN IF NOT EXISTS grupo text NOT NULL DEFAULT 'Árbol'`,
     sql`CREATE TABLE IF NOT EXISTS presentaciones (
       nombre text PRIMARY KEY,
       orden integer NOT NULL DEFAULT 0
@@ -103,9 +104,9 @@ async function crearTablas() {
       observaciones text NOT NULL DEFAULT '',
       registrado timestamptz NOT NULL DEFAULT now()
     )`,
-    sql`INSERT INTO especies (codigo, comun, cientifico, region, minimo)
-      SELECT * FROM json_to_recordset(${JSON.stringify(ESPECIES_NATIVAS)}::json)
-        AS x (codigo text, comun text, cientifico text, region text, minimo integer)
+    sql`INSERT INTO especies (codigo, comun, cientifico, region, grupo, minimo)
+      SELECT * FROM json_to_recordset(${JSON.stringify(ESPECIES)}::json)
+        AS x (codigo text, comun text, cientifico text, region text, grupo text, minimo integer)
       WHERE NOT EXISTS (SELECT 1 FROM especies)`,
     sql`INSERT INTO presentaciones (nombre, orden)
       SELECT * FROM json_to_recordset(${JSON.stringify(presentaciones)}::json) AS x (nombre text, orden integer)
@@ -127,7 +128,7 @@ export async function leerCatalogo(): Promise<Catalogo> {
   await prepararBase();
   const sql = conexion();
   const [especies, presentaciones, tamanos] = await Promise.all([
-    sql`SELECT codigo, comun, cientifico, region, minimo FROM especies ORDER BY comun`,
+    sql`SELECT codigo, comun, cientifico, region, grupo, minimo FROM especies ORDER BY comun`,
     sql`SELECT nombre FROM presentaciones ORDER BY orden, nombre`,
     sql`SELECT nombre FROM tamanos ORDER BY orden, nombre`,
   ]);

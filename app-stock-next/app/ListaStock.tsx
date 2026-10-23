@@ -16,6 +16,7 @@ export default function ListaStock({ especies, presentaciones, tamanos, stock }:
   const [soloBajos, setSoloBajos] = useState(false);
   const [verTodas, setVerTodas] = useState(false);
   const [region, setRegion] = useState('');
+  const [grupo, setGrupo] = useState('');
 
   const regiones = [...new Set(especies.flatMap(e => regionesDe(e)))].sort((a, b) => a.localeCompare(b, 'es'));
   const conStock = (e: Especie) => totalEspecie(stock, e.codigo) !== 0;
@@ -25,6 +26,7 @@ export default function ListaStock({ especies, presentaciones, tamanos, stock }:
     e =>
       (!texto || `${e.comun} ${e.cientifico} ${e.codigo} ${e.region}`.toLowerCase().includes(texto)) &&
       (!region || regionesDe(e).includes(region)) &&
+      (!grupo || e.grupo === grupo) &&
       (soloBajos ? bajoMinimo(stock, e) : verTodas || texto !== '' || conStock(e)),
   );
   const cantidadBajos = especies.filter(e => bajoMinimo(stock, e)).length;
@@ -56,8 +58,13 @@ export default function ListaStock({ especies, presentaciones, tamanos, stock }:
 
       <div className="filtros">
         <input type="search" placeholder="Buscar especie o código" value={buscar} onChange={e => setBuscar(e.target.value)} />
+        <select aria-label="Árboles o palmeras" value={grupo} onChange={e => setGrupo(e.target.value)}>
+          <option value="">Tipo: todos</option>
+          <option value="Árbol">Solo árboles</option>
+          <option value="Palmera">Solo palmeras</option>
+        </select>
         <select aria-label="Región" value={region} onChange={e => setRegion(e.target.value)}>
-          <option value="">Todas las regiones</option>
+          <option value="">Región: todas</option>
           {regiones.map(r => (
             <option key={r}>{r}</option>
           ))}
@@ -97,7 +104,14 @@ export default function ListaStock({ especies, presentaciones, tamanos, stock }:
                   <div className="cientifico">
                     {e.cientifico} · {e.codigo}
                   </div>
-                  {e.region && <div className="region">{e.region}</div>}
+                  <div className="region">
+                    {e.grupo === 'Palmera' && (
+                      <span className="etiqueta" title="Especie priorizada por SENASA (Res. 64/2026)">
+                        Palmera
+                      </span>
+                    )}
+                    {e.region}
+                  </div>
                 </div>
                 <div className="total">{totalEspecie(stock, e.codigo)}</div>
               </div>

@@ -1,26 +1,38 @@
-/* Estilos de la app. Se diseñó primero para el celu y después se agrega lo de pantallas más grandes:
+/* Estilos de la app, con la estética de la marca Native (nativetrees.com.ar y los presupuestos):
+   verde oliva, crema del logo, tonos salvia, Montserrat para títulos y Raleway para el texto.
+
+   Se diseñó primero para el celu y después se agrega lo de pantallas más grandes:
    - hasta 639px: celu (navegación abajo, una columna)
    - desde 640px: tablet (navegación arriba, dos columnas)
-   - desde 1024px: compu (grilla de tres columnas y panel al costado en Cargar) */
+   - desde 1024px: compu (grilla de tres columnas, lema de la marca y panel al costado en Cargar) */
 
 :root {
-  --verde: #2f6b3a;
-  --verde-claro: #eaf3ec;
-  --rojo: #b3261e;
-  --rojo-claro: #fbeaea;
-  --gris: #5f6360;
-  --borde: #d9ddd8;
-  --fondo: #f6f7f4;
+  /* Colores de la marca */
+  --verde: #646945;        /* verde oliva principal (web y logo de los presupuestos) */
+  --verde-oscuro: #505437;
+  --oliva: #7f8463;        /* encabezado de tablas en los presupuestos */
+  --salvia: #b8bca6;       /* barra "DESCRIPCIÓN" de los presupuestos */
+  --salvia-claro: #ecebe1;
+  --crema: #f9f1d9;        /* color del logo */
+
+  /* Colores de uso */
+  --texto: #2b2c22;
+  --gris: #6b6c5e;
+  --borde: #dcdacb;
+  --fondo: #f7f6f0;
   --blanco: #fff;
+  --rojo: #a63a26;
+  --rojo-claro: #f7e7e1;
+
   --alto-nav: 60px;
 }
 
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--fuente-texto), system-ui, "Segoe UI", sans-serif;
   background: var(--fondo);
-  color: #1d1d1d;
+  color: var(--texto);
   /* Lugar para la barra de navegación fija de abajo en el celu. */
   padding-bottom: calc(var(--alto-nav) + env(safe-area-inset-bottom));
 }
@@ -28,11 +40,21 @@ body {
 .contenedor { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 16px; }
 main.contenedor { padding-top: 16px; padding-bottom: 24px; }
 
+/* Títulos y números con la tipografía de la marca. */
+label, .nombre, .total, .valor, h2, th, nav a, button { font-family: var(--fuente-titulos), system-ui, sans-serif; }
+
 /* ---------- Encabezado y navegación ---------- */
 
-header { background: var(--verde); color: var(--blanco); }
-.encabezado { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; }
-header h1 { margin: 0; font-size: 1.15rem; white-space: nowrap; }
+header { background: var(--verde); color: var(--crema); }
+.encabezado { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; }
+.marca { display: flex; align-items: center; gap: 10px; }
+.logo { display: block; height: 28px; width: auto; }
+.titulo-app {
+  font-family: var(--fuente-titulos), sans-serif; font-weight: 600; font-size: .8rem;
+  letter-spacing: .14em; text-transform: uppercase;
+  padding-left: 10px; border-left: 1px solid rgba(249, 241, 217, .5);
+}
+.lema { display: none; }
 
 /* Celu: barra fija abajo, fácil de alcanzar con el pulgar. */
 nav {
@@ -43,9 +65,9 @@ nav {
 }
 nav a {
   flex: 1; display: flex; align-items: center; justify-content: center;
-  text-decoration: none; color: var(--gris); font-size: .95rem; border-top: 3px solid transparent;
+  text-decoration: none; color: var(--gris); font-size: .9rem; font-weight: 500; border-top: 3px solid transparent;
 }
-nav a.activo { color: var(--verde); border-top-color: var(--verde); font-weight: 600; }
+nav a.activo { color: var(--verde); border-top-color: var(--verde); font-weight: 700; }
 
 /* ---------- Formularios ---------- */
 
@@ -54,26 +76,28 @@ input, select, textarea {
   border: 1px solid var(--borde); border-radius: 8px; background: var(--blanco); color: inherit;
 }
 input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, nav a:focus-visible {
-  outline: 3px solid rgba(47, 107, 58, .35); outline-offset: 1px;
+  outline: 3px solid rgba(100, 105, 69, .35); outline-offset: 1px;
 }
-label { display: block; margin: 14px 0 6px; font-weight: 600; }
+label { display: block; margin: 14px 0 6px; font-weight: 600; font-size: .9rem; color: var(--verde-oscuro); }
 .ayuda { color: var(--gris); font-size: .85rem; margin-top: 4px; }
 .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
 .tipos { display: flex; gap: 8px; }
 .tipos button {
-  flex: 1; min-height: 44px; padding: 10px; font-size: 1rem; font-family: inherit;
+  flex: 1; min-height: 44px; padding: 10px 6px; font-size: .95rem;
   border: 1px solid var(--borde); border-radius: 8px; background: var(--blanco); color: inherit; cursor: pointer;
 }
-.tipos button.elegido { border-color: var(--verde); background: var(--verde-claro); color: var(--verde); font-weight: 700; }
+.tipos button.elegido { border-color: var(--verde); background: var(--salvia-claro); color: var(--verde-oscuro); font-weight: 700; }
 
 button.principal {
-  width: 100%; margin-top: 20px; padding: 14px; font-size: 1.05rem; font-family: inherit;
-  border: 0; border-radius: 8px; background: var(--verde); color: var(--blanco); cursor: pointer;
+  width: 100%; margin-top: 20px; padding: 14px; font-size: 1rem; font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase;
+  border: 0; border-radius: 8px; background: var(--verde); color: var(--crema); cursor: pointer;
 }
+button.principal:hover { background: var(--verde-oscuro); }
 button.principal:disabled { opacity: .6; }
 .mensaje { margin-top: 14px; padding: 12px; border-radius: 8px; }
-.mensaje.ok { background: var(--verde-claro); color: var(--verde); }
+.mensaje.ok { background: var(--salvia-claro); color: var(--verde-oscuro); }
 .mensaje.error { background: var(--rojo-claro); color: var(--rojo); }
 
 /* ---------- Stock ---------- */
@@ -83,27 +107,36 @@ button.principal:disabled { opacity: .6; }
 .indicadores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
 .indicador {
   background: var(--blanco); border: 1px solid var(--borde); border-radius: 10px; padding: 10px;
-  text-align: left; font-family: inherit; color: inherit;
+  text-align: left; color: inherit; font-family: inherit;
 }
-.indicador .valor { display: block; font-size: 1.4rem; font-weight: 700; }
-.indicador .nombre-indicador { display: block; color: var(--gris); font-size: .8rem; }
+.indicador .valor { display: block; font-size: 1.4rem; font-weight: 700; color: var(--verde-oscuro); }
+/* Como "DESCRIPCIÓN" en los presupuestos: mayúsculas chicas y espaciadas. */
+.indicador .nombre-indicador {
+  display: block; color: var(--gris); font-family: var(--fuente-titulos), sans-serif;
+  font-size: .68rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
+}
 button.indicador { cursor: pointer; }
 .indicador.alerta .valor { color: var(--rojo); }
 .indicador.alerta.activo { border-color: var(--rojo); background: var(--rojo-claro); }
 
-.filtros { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.filtros { display: flex; gap: 8px 12px; align-items: center; flex-wrap: wrap; }
 .filtros input[type=search] { flex: 1 1 100%; min-width: 0; }
-.filtros select { flex: 1 1 0; min-width: 0; }
+.filtros select { flex: 1 1 140px; min-width: 0; }
 
 .grilla { display: grid; grid-template-columns: 1fr; gap: 10px; }
 .tarjeta { background: var(--blanco); border: 1px solid var(--borde); border-radius: 10px; padding: 12px; }
 .tarjeta.bajo { border-left: 5px solid var(--rojo); }
 .fila { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
-.nombre { font-weight: 600; }
+.nombre { font-weight: 600; color: var(--verde-oscuro); }
 .cientifico { font-style: italic; color: var(--gris); font-size: .9rem; }
-.region { color: var(--gris); font-size: .8rem; margin-top: 2px; }
-.tarjeta.sin-stock .total { color: var(--gris); font-weight: 400; }
-.total { font-size: 1.3rem; font-weight: 700; white-space: nowrap; }
+.region { color: var(--gris); font-size: .8rem; margin-top: 4px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.etiqueta {
+  background: var(--salvia-claro); color: var(--verde-oscuro); border-radius: 999px; padding: 1px 8px;
+  font-family: var(--fuente-titulos), sans-serif; font-size: .65rem; font-weight: 600;
+  letter-spacing: .06em; text-transform: uppercase;
+}
+.total { font-size: 1.3rem; font-weight: 700; white-space: nowrap; color: var(--verde); }
+.tarjeta.sin-stock .total { color: var(--salvia); font-weight: 500; }
 .bajo .total { color: var(--rojo); }
 .aviso { color: var(--rojo); font-size: .85rem; margin-top: 4px; }
 .presentaciones { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
@@ -113,18 +146,20 @@ button.indicador { cursor: pointer; }
 
 .cargar { display: grid; grid-template-columns: 1fr; gap: 24px; }
 .panel { display: none; }
-.panel h2 { margin: 0 0 4px; font-size: 1.05rem; }
+.panel h2 { margin: 0 0 4px; font-size: 1.05rem; color: var(--verde-oscuro); }
 .panel table { margin-top: 12px; }
 
-/* ---------- Últimos ---------- */
+/* ---------- Tablas ---------- */
 
 .tabla { overflow-x: auto; border: 1px solid var(--borde); border-radius: 10px; }
 table { width: 100%; border-collapse: collapse; background: var(--blanco); font-size: .9rem; }
 th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--borde); }
+/* Encabezado de tabla como en los presupuestos: oliva con letras blancas. */
+thead th { background: var(--oliva); color: var(--blanco); font-weight: 500; font-size: .8rem; border-bottom: 0; }
 tbody tr:last-child td { border-bottom: 0; }
 .num { text-align: right; white-space: nowrap; }
 .tipo-Salida { color: var(--rojo); }
-.tipo-Entrada { color: var(--verde); }
+.tipo-Entrada { color: var(--verde); font-weight: 600; }
 
 /* En el celu la tabla se achica y esconde la columna Responsable. */
 @media (max-width: 480px) {
@@ -139,28 +174,30 @@ tbody tr:last-child td { border-bottom: 0; }
   main.contenedor { padding-top: 24px; }
 
   /* La navegación sube al encabezado, como pestañas. */
-  .encabezado { min-height: 60px; }
+  .encabezado { min-height: 68px; }
+  .logo { height: 34px; }
   nav {
     position: static; height: auto; padding: 0; background: none; border: 0;
     align-self: stretch; flex: 1; justify-content: center; gap: 4px;
   }
   nav a {
-    flex: 0 1 auto; padding: 0 18px; color: rgba(255, 255, 255, .8);
+    flex: 0 1 auto; padding: 0 18px; color: rgba(249, 241, 217, .75);
     border-top: 0; border-bottom: 3px solid transparent;
+    font-size: .8rem; letter-spacing: .1em; text-transform: uppercase;
   }
-  nav a:hover { color: var(--blanco); }
-  nav a.activo { color: var(--blanco); border-bottom-color: var(--blanco); }
+  nav a:hover { color: var(--crema); }
+  nav a.activo { color: var(--crema); border-bottom-color: var(--crema); }
 
   .indicadores { gap: 12px; }
   .indicador { padding: 14px; }
-  .indicador .valor { font-size: 1.7rem; }
-  .indicador .nombre-indicador { font-size: .85rem; }
+  .indicador .valor { font-size: 1.8rem; }
+  .indicador .nombre-indicador { font-size: .72rem; }
 
   .grilla { grid-template-columns: repeat(2, 1fr); gap: 12px; }
 
-  /* Buscador y filtros en una sola fila. */
-  .filtros input[type=search] { flex: 2 1 260px; }
-  .filtros select { flex: 1 1 180px; }
+  /* Buscador y filtros en una sola fila cuando entran. */
+  .filtros input[type=search] { flex: 2 1 240px; }
+  .filtros select { flex: 1 1 150px; }
 
   .formulario { max-width: 640px; }
 }
@@ -168,6 +205,11 @@ tbody tr:last-child td { border-bottom: 0; }
 /* ---------- Compu: desde 1024px ---------- */
 
 @media (min-width: 1024px) {
+  .lema {
+    display: block; font-family: var(--fuente-titulos), sans-serif; font-size: .68rem; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase; opacity: .85; white-space: nowrap;
+  }
+
   .grilla { grid-template-columns: repeat(3, 1fr); }
 
   /* Formulario a la izquierda y panel con el stock de la especie elegida a la derecha. */

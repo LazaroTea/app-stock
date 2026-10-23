@@ -5,8 +5,10 @@ export interface Especie {
   codigo: string;
   comun: string;
   cientifico: string;
-  /** Regiones donde es nativa, separadas por coma (ej. "Chaco, Espinal"). */
+  /** Regiones donde es nativa, separadas por coma (ej. "Chaco, Espinal"), o "Exótica". */
   region: string;
+  /** "Árbol" o "Palmera" (las palmeras tienen requisitos SENASA aparte, Res. 64/2026). */
+  grupo: string;
   /** Mínimo para el total de la especie (todas las presentaciones). 0 = sin aviso. */
   minimo: number;
 }
