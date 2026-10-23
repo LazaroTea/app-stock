@@ -71,7 +71,12 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
   se ven **todas**; también se puede ver **solo árboles** o **solo palmeras**. Al buscar por nombre aparecen también las que no tienen stock.
 - **Cargar** (en formato **remito**):
   1. **Datos del remito:** tipo de movimiento (Entrada, Salida o Ajuste), fecha, responsable,
-     **destinatario** (opcional: cliente, obra o proveedor; se sugieren los ya usados) y observaciones.
+     **procedencia** y **destino** (opcionales), **destinatario** (opcional: persona o contacto que recibe)
+     y observaciones.
+     - Procedencia: Palma Sola, Goya, Pilar, Benavidez o **Proveedor**.
+     - Destino: Palma Sola, Goya, Pilar, Benavidez o **Cliente**.
+     - Si se elige Proveedor o Cliente, aparece un renglón para escribir cuál (se sugieren los ya usados).
+       Las listas están en `lib/stock.ts` (`PROCEDENCIAS` y `DESTINOS`).
   2. **Sumar plantas:** especie, presentación (botones), tamaño (desplegable) y cantidad, y el botón
      **+ Sumar** (o Enter). Cada planta sumada aparece en el remito, al costado en la compu y abajo en el celu.
      Si se suma algo que ya está (misma especie, presentación y tamaño), se juntan las cantidades.
@@ -129,7 +134,8 @@ Hay cinco tablas:
 - **especies**: código, nombre común, nombre científico, región (o "Exótica"), grupo (Árbol o Palmera), stock mínimo.
 - **presentaciones**: Envasado, Maceta, Raíz desnuda (y su orden; la primera viene elegida al cargar).
 - **tamanos**: los tamaños y su orden.
-- **remitos**: número (`id`), fecha, tipo, destinatario, responsable y observaciones de cada remito.
+- **remitos**: número (`id`), fecha, tipo, procedencia y destino (con `procedencia_detalle` y `destino_detalle`
+  para el nombre del proveedor o cliente), destinatario, responsable y observaciones de cada remito.
 - **movimientos**: una fila por cada línea de remito, con su presentación, tamaño (y en `tamano_detalle`, lo
   escrito a mano cuando el tamaño es "Especificar") y el número de remito (`remito_id`). Los movimientos
   cargados antes de los remitos no tienen número.

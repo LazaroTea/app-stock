@@ -2,7 +2,14 @@
 // Lo que se ejecuta en el servidor cuando alguien guarda un remito.
 import { revalidatePath } from 'next/cache';
 import { guardarRemito, leerCatalogo } from '@/lib/almacen';
-import { etiquetaTamano, numeroRemito, TAMANO_A_ESPECIFICAR } from '@/lib/stock';
+import {
+  DESTINOS,
+  etiquetaTamano,
+  LUGARES_A_ESPECIFICAR,
+  numeroRemito,
+  PROCEDENCIAS,
+  TAMANO_A_ESPECIFICAR,
+} from '@/lib/stock';
 import { TIPOS, type LineaRemito, type TipoMovimiento } from '@/lib/tipos';
 
 export interface Resultado {
@@ -16,12 +23,33 @@ export interface RemitoEnviado {
   tipo: TipoMovimiento;
   fecha: string;
   destinatario: string;
+  procedencia: string;
+  procedenciaDetalle: string;
+  destino: string;
+  destinoDetalle: string;
   responsable: string;
   observaciones: string;
   lineas: LineaRemito[];
 }
 
 const MAXIMO_LINEAS = 200;
+
+// Procedencia o destino: vacío o de la lista; con "Proveedor" o "Cliente" el nombre es obligatorio.
+// Devuelve el lugar y su detalle limpios, o un mensaje de error.
+function revisarLugar(
+  que: 'procedencia' | 'destino',
+  lugar: unknown,
+  detalle: unknown,
+  opciones: string[],
+): { lugar: string; detalle: string } | string {
+  const l = String(lugar ?? '');
+  if (l && !opciones.includes(l)) return `La ${que} "${l}" no existe.`;
+  if (!LUGARES_A_ESPECIFICAR.includes(l)) return { lugar: l, detalle: '' };
+  const d = limpiar(detalle);
+  if (!d) return `Escribí qué ${l.toLowerCase()} es (${que}).`;
+  if (d.length > 100) return `El nombre del ${l.toLowerCase()} es muy largo (máximo 100 letras).`;
+  return { lugar: l, detalle: d };
+}
 
 // Saca los espacios de más para que "5 m" y "5  m " sumen al mismo stock.
 function limpiar(texto: unknown): string {
@@ -38,6 +66,10 @@ export async function registrarRemito(_anterior: Resultado | null, remito: Remit
   }
   if (limpiar(remito.destinatario).length > 100) return { ok: false, mensaje: 'El destinatario es muy largo (máximo 100 letras).' };
   if (remito.lineas.length > MAXIMO_LINEAS) return { ok: false, mensaje: `El remito tiene más de ${MAXIMO_LINEAS} líneas.` };
+  const procedencia = revisarLugar('procedencia', remito.procedencia, remito.procedenciaDetalle, PROCEDENCIAS);
+  if (typeof procedencia === 'string') return { ok: false, mensaje: procedencia };
+  const destino = revisarLugar('destino', remito.destino, remito.destinoDetalle, DESTINOS);
+  if (typeof destino === 'string') return { ok: false, mensaje: destino };
 
   try {
     const { especies, presentaciones, tamanos } = await leerCatalogo();
@@ -66,6 +98,10 @@ export async function registrarRemito(_anterior: Resultado | null, remito: Remit
       tipo,
       fecha,
       destinatario: limpiar(remito.destinatario),
+      procedencia: procedencia.lugar,
+      procedenciaDetalle: procedencia.detalle,
+      destino: destino.lugar,
+      destinoDetalle: destino.detalle,
       responsable: limpiar(remito.responsable),
       observaciones: String(remito.observaciones ?? '').trim(),
       lineas,

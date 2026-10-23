@@ -64,6 +64,16 @@ export function buscarEspecie(especies: Especie[], texto: string): Especie | und
   return especies.find(e => etiquetaEspecie(e).toLowerCase() === t || e.codigo.toLowerCase() === t);
 }
 
+// De dónde vienen y a dónde van las plantas de un remito. Con "Proveedor" y "Cliente" se escribe cuál.
+export const PROCEDENCIAS = ['Palma Sola', 'Goya', 'Pilar', 'Benavidez', 'Proveedor'];
+export const DESTINOS = ['Palma Sola', 'Goya', 'Pilar', 'Benavidez', 'Cliente'];
+export const LUGARES_A_ESPECIFICAR = ['Proveedor', 'Cliente'];
+
+// "Proveedor" + "Vivero El Ceibo" -> "Proveedor (Vivero El Ceibo)"; "Goya" -> "Goya".
+export function etiquetaLugar(lugar: string, detalle: string): string {
+  return LUGARES_A_ESPECIFICAR.includes(lugar) && detalle ? `${lugar} (${detalle})` : lugar;
+}
+
 // 12 -> "000012"
 export function numeroRemito(numero: number): string {
   return String(numero).padStart(6, '0');

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { leerRemito } from '@/lib/almacen';
 import { EMPRESA } from '@/lib/empresa';
-import { etiquetaTamano, fechaLegible, numeroRemito } from '@/lib/stock';
+import { etiquetaLugar, etiquetaTamano, fechaLegible, numeroRemito } from '@/lib/stock';
 import BotonImprimir from './BotonImprimir';
 
 export const dynamic = 'force-dynamic';
@@ -61,6 +61,16 @@ export default async function PaginaRemito({ params }: Props) {
           <div>
             <span>Movimiento:</span> {remito.tipo}
           </div>
+          {remito.procedencia && (
+            <div>
+              <span>Procedencia:</span> {etiquetaLugar(remito.procedencia, remito.procedenciaDetalle)}
+            </div>
+          )}
+          {remito.destino && (
+            <div>
+              <span>Destino:</span> {etiquetaLugar(remito.destino, remito.destinoDetalle)}
+            </div>
+          )}
           {remito.destinatario && (
             <div>
               <span>Destinatario:</span> {remito.destinatario}

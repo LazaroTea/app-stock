@@ -7,11 +7,16 @@ import {
   buscarEspecie,
   cantidadConSigno,
   claveStock,
+  DESTINOS,
   etiquetaEspecie,
+  etiquetaLugar,
   etiquetaTamano,
   fechaLegible,
+  LUGARES_A_ESPECIFICAR,
+  PROCEDENCIAS,
   TAMANO_A_ESPECIFICAR,
 } from '@/lib/stock';
+import type { Sugerencias } from '@/lib/almacen';
 import { TIPOS, type Especie, type LineaRemito, type Stock, type TipoMovimiento } from '@/lib/tipos';
 
 const AYUDAS: Record<TipoMovimiento, string> = {
@@ -28,8 +33,8 @@ interface Props {
   presentaciones: string[];
   tamanos: string[];
   stock: Stock;
-  /** Destinatarios ya usados, para sugerirlos. */
-  destinatarios: string[];
+  /** Destinatarios, proveedores y clientes ya usados, para sugerirlos. */
+  sugerencias: Sugerencias;
   hoy: string;
 }
 
@@ -38,13 +43,17 @@ const limpiar = (texto: string) => texto.trim().replace(/\s+/g, ' ');
 
 const claveLinea = (l: LineaRemito) => claveStock(l.presentacion, etiquetaTamano(l.tamano, l.tamanoDetalle));
 
-export default function Formulario({ especies, presentaciones, tamanos, stock, destinatarios, hoy }: Props) {
+export default function Formulario({ especies, presentaciones, tamanos, stock, sugerencias, hoy }: Props) {
   const [resultado, enviar, guardando] = useActionState(registrarRemito, null);
 
   // Datos del remito
   const [tipo, setTipo] = useState<TipoMovimiento>('Entrada');
   const [fecha, setFecha] = useState(hoy);
   const [destinatario, setDestinatario] = useState('');
+  const [procedencia, setProcedencia] = useState('');
+  const [procedenciaDetalle, setProcedenciaDetalle] = useState('');
+  const [destino, setDestino] = useState('');
+  const [destinoDetalle, setDestinoDetalle] = useState('');
   const [responsable, setResponsable] = useState('');
   const [observaciones, setObservaciones] = useState('');
   const [lineas, setLineas] = useState<LineaRemito[]>([]);
@@ -70,22 +79,31 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, d
         setLineas(borrador.lineas);
         if (TIPOS.includes(borrador.tipo)) setTipo(borrador.tipo);
         if (typeof borrador.destinatario === 'string') setDestinatario(borrador.destinatario);
+        if (typeof borrador.procedencia === 'string') setProcedencia(borrador.procedencia);
+        if (typeof borrador.procedenciaDetalle === 'string') setProcedenciaDetalle(borrador.procedenciaDetalle);
+        if (typeof borrador.destino === 'string') setDestino(borrador.destino);
+        if (typeof borrador.destinoDetalle === 'string') setDestinoDetalle(borrador.destinoDetalle);
       }
     } catch {}
   }, []);
 
   useEffect(() => {
     try {
-      if (lineas.length) localStorage.setItem(BORRADOR, JSON.stringify({ tipo, destinatario, lineas }));
+      const borrador = { tipo, destinatario, procedencia, procedenciaDetalle, destino, destinoDetalle, lineas };
+      if (lineas.length) localStorage.setItem(BORRADOR, JSON.stringify(borrador));
       else localStorage.removeItem(BORRADOR);
     } catch {}
-  }, [tipo, destinatario, lineas]);
+  }, [tipo, destinatario, procedencia, procedenciaDetalle, destino, destinoDetalle, lineas]);
 
   // Después de guardar bien, el remito queda vacío para empezar otro.
   useEffect(() => {
     if (resultado?.ok) {
       setLineas([]);
       setDestinatario('');
+      setProcedencia('');
+      setProcedenciaDetalle('');
+      setDestino('');
+      setDestinoDetalle('');
       setObservaciones('');
       setAviso(null);
     }
@@ -151,7 +169,20 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, d
     try {
       localStorage.setItem('responsable', responsable);
     } catch {}
-    startTransition(() => enviar({ tipo, fecha, destinatario, responsable, observaciones, lineas }));
+    startTransition(() =>
+      enviar({
+        tipo,
+        fecha,
+        destinatario,
+        procedencia,
+        procedenciaDetalle,
+        destino,
+        destinoDetalle,
+        responsable,
+        observaciones,
+        lineas,
+      }),
+    );
   }
 
   // Control de cada línea: en salidas y ajustes, que no se saque más de lo que hay.
@@ -163,11 +194,16 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, d
   });
   const conSigno = tipo !== 'Ajuste' && lineas.some(l => l.cantidad < 0);
   const totalPlantas = lineas.reduce((suma, l) => suma + l.cantidad, 0);
+  const faltaNombre = (lugar: string, detalle: string) => LUGARES_A_ESPECIFICAR.includes(lugar) && !limpiar(detalle);
   const problema = conSigno
     ? 'Hay cantidades negativas: solo se permiten en los ajustes.'
     : filas.some(f => f.sinStock)
       ? 'Hay líneas sin stock suficiente (en rojo).'
-      : '';
+      : faltaNombre(procedencia, procedenciaDetalle)
+        ? 'Falta escribir qué proveedor es (Procedencia).'
+        : faltaNombre(destino, destinoDetalle)
+          ? 'Falta escribir qué cliente es (Destino).'
+          : '';
 
   return (
     <div className="cargar">
@@ -214,19 +250,42 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, d
           </div>
         </div>
 
+        <div className="dos">
+          <CampoLugar
+            id="procedencia"
+            titulo="Procedencia"
+            opciones={PROCEDENCIAS}
+            lugar={procedencia}
+            detalle={procedenciaDetalle}
+            onLugar={setProcedencia}
+            onDetalle={setProcedenciaDetalle}
+            sugeridos={sugerencias.proveedores}
+          />
+          <CampoLugar
+            id="destino"
+            titulo="Destino"
+            opciones={DESTINOS}
+            lugar={destino}
+            detalle={destinoDetalle}
+            onLugar={setDestino}
+            onDetalle={setDestinoDetalle}
+            sugeridos={sugerencias.clientes}
+          />
+        </div>
+
         <label htmlFor="destinatario">
           Destinatario <span className="opcional">(opcional)</span>
         </label>
         <input
           id="destinatario"
           list="lista-destinatarios"
-          placeholder={tipo === 'Entrada' ? 'Proveedor o de dónde vienen' : 'Cliente, obra o a dónde van'}
+          placeholder="Persona o contacto que recibe"
           maxLength={100}
           value={destinatario}
           onChange={e => setDestinatario(e.target.value)}
         />
         <datalist id="lista-destinatarios">
-          {destinatarios.map(d => (
+          {sugerencias.destinatarios.map(d => (
             <option key={d} value={d} />
           ))}
         </datalist>
@@ -346,8 +405,10 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, d
             <div>{fecha ? fechaLegible(fecha) : ''}</div>
           </div>
         </div>
-        {(destinatario || responsable) && (
+        {(procedencia || destino || destinatario || responsable) && (
           <div className="remito-extra">
+            {procedencia && <div>Procedencia: {etiquetaLugar(procedencia, limpiar(procedenciaDetalle))}</div>}
+            {destino && <div>Destino: {etiquetaLugar(destino, limpiar(destinoDetalle))}</div>}
             {destinatario && <div className="remito-destinatario">Destinatario: {destinatario}</div>}
             {responsable && <div>Responsable: {responsable}</div>}
           </div>
@@ -428,6 +489,56 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, d
           </div>
         )}
       </aside>
+    </div>
+  );
+}
+
+interface PropsLugar {
+  id: string;
+  titulo: string;
+  opciones: string[];
+  lugar: string;
+  detalle: string;
+  onLugar: (valor: string) => void;
+  onDetalle: (valor: string) => void;
+  /** Nombres ya usados de proveedores o clientes, para sugerirlos. */
+  sugeridos: string[];
+}
+
+// Procedencia o destino: un desplegable y, si se elige "Proveedor" o "Cliente", un renglón para escribir cuál.
+function CampoLugar({ id, titulo, opciones, lugar, detalle, onLugar, onDetalle, sugeridos }: PropsLugar) {
+  const especificar = LUGARES_A_ESPECIFICAR.includes(lugar);
+  return (
+    <div>
+      <label htmlFor={id}>
+        {titulo} <span className="opcional">(opcional)</span>
+      </label>
+      <select id={id} value={lugar} onChange={e => onLugar(e.target.value)}>
+        <option value="">Sin especificar</option>
+        {opciones.map(o => (
+          <option key={o}>{o}</option>
+        ))}
+      </select>
+      {especificar && (
+        <>
+          <input
+            id={`${id}_detalle`}
+            className="renglon-extra"
+            aria-label={`Escribí qué ${lugar.toLowerCase()} es`}
+            placeholder="¿Cuál?"
+            list={`lista-${id}`}
+            maxLength={100}
+            value={detalle}
+            onChange={e => onDetalle(e.target.value)}
+            autoFocus
+          />
+          <datalist id={`lista-${id}`}>
+            {sugeridos.map(s => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
+        </>
+      )}
     </div>
   );
 }

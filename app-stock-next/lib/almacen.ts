@@ -120,6 +120,12 @@ async function crearTablas() {
     sql`ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS remito_id integer REFERENCES remitos (id)`,
     // Opcional: a quién va (o de quién viene) el remito.
     sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS destinatario text NOT NULL DEFAULT ''`,
+    // Opcionales: de dónde vienen y a dónde van (ver PROCEDENCIAS y DESTINOS en lib/stock.ts).
+    // Con "Proveedor" o "Cliente", en *_detalle va el nombre.
+    sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS procedencia text NOT NULL DEFAULT ''`,
+    sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS procedencia_detalle text NOT NULL DEFAULT ''`,
+    sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS destino text NOT NULL DEFAULT ''`,
+    sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS destino_detalle text NOT NULL DEFAULT ''`,
     sql`INSERT INTO especies (codigo, comun, cientifico, region, grupo, minimo)
       SELECT * FROM json_to_recordset(${JSON.stringify(ESPECIES)}::json)
         AS x (codigo text, comun text, cientifico text, region text, grupo text, minimo integer)
@@ -190,17 +196,35 @@ export interface RemitoNuevo {
   fecha: string;
   tipo: TipoMovimiento;
   destinatario: string;
+  procedencia: string;
+  procedenciaDetalle: string;
+  destino: string;
+  destinoDetalle: string;
   responsable: string;
   observaciones: string;
   lineas: LineaRemito[];
 }
 
-/** Los destinatarios ya usados (los más recientes primero), para sugerirlos al cargar. */
-export async function leerDestinatarios(): Promise<string[]> {
+export interface Sugerencias {
+  destinatarios: string[];
+  proveedores: string[];
+  clientes: string[];
+}
+
+/** Destinatarios, proveedores y clientes ya usados (los más recientes primero), para sugerirlos al cargar. */
+export async function leerSugerencias(): Promise<Sugerencias> {
   await prepararBase();
-  const filas = await conexion()`SELECT destinatario FROM remitos WHERE destinatario <> ''
-    GROUP BY destinatario ORDER BY max(id) DESC LIMIT 200`;
-  return filas.map(f => String(f.destinatario));
+  const sql = conexion();
+  const [destinatarios, proveedores, clientes] = await Promise.all([
+    sql`SELECT destinatario AS nombre FROM remitos WHERE destinatario <> ''
+        GROUP BY destinatario ORDER BY max(id) DESC LIMIT 200`,
+    sql`SELECT procedencia_detalle AS nombre FROM remitos WHERE procedencia = 'Proveedor' AND procedencia_detalle <> ''
+        GROUP BY procedencia_detalle ORDER BY max(id) DESC LIMIT 200`,
+    sql`SELECT destino_detalle AS nombre FROM remitos WHERE destino = 'Cliente' AND destino_detalle <> ''
+        GROUP BY destino_detalle ORDER BY max(id) DESC LIMIT 200`,
+  ]);
+  const nombres = (filas: Record<string, unknown>[]) => filas.map(f => String(f.nombre));
+  return { destinatarios: nombres(destinatarios), proveedores: nombres(proveedores), clientes: nombres(clientes) };
 }
 
 export interface RemitoGuardado {
@@ -208,6 +232,10 @@ export interface RemitoGuardado {
   fecha: string;
   tipo: TipoMovimiento;
   destinatario: string;
+  procedencia: string;
+  procedenciaDetalle: string;
+  destino: string;
+  destinoDetalle: string;
   responsable: string;
   observaciones: string;
   lineas: (LineaRemito & { comun: string; cientifico: string })[];
@@ -218,7 +246,8 @@ export async function leerRemito(numero: number): Promise<RemitoGuardado | null>
   await prepararBase();
   const sql = conexion();
   const [[remito], lineas] = await Promise.all([
-    sql`SELECT id AS numero, to_char(fecha, 'YYYY-MM-DD') AS fecha, tipo, destinatario, responsable, observaciones
+    sql`SELECT id AS numero, to_char(fecha, 'YYYY-MM-DD') AS fecha, tipo, destinatario, responsable, observaciones,
+          procedencia, procedencia_detalle AS "procedenciaDetalle", destino, destino_detalle AS "destinoDetalle"
         FROM remitos WHERE id = ${numero}`,
     sql`SELECT m.codigo, m.presentacion, m.tamano, m.tamano_detalle AS "tamanoDetalle", m.cantidad,
           e.comun, e.cientifico
@@ -281,8 +310,9 @@ export async function guardarRemito(r: RemitoNuevo): Promise<{ numero: number | 
        ), faltantes AS (
          SELECT * FROM con_stock WHERE habia + cambio < 0
        ), remito AS (
-         INSERT INTO remitos (fecha, tipo, responsable, observaciones, destinatario)
-         SELECT $2, $3, $4, $5, $6 WHERE NOT EXISTS (SELECT 1 FROM faltantes)
+         INSERT INTO remitos (fecha, tipo, responsable, observaciones, destinatario,
+                              procedencia, procedencia_detalle, destino, destino_detalle)
+         SELECT $2, $3, $4, $5, $6, $7, $8, $9, $10 WHERE NOT EXISTS (SELECT 1 FROM faltantes)
          RETURNING id
        ), guardadas AS (
          INSERT INTO movimientos
@@ -294,7 +324,10 @@ export async function guardarRemito(r: RemitoNuevo): Promise<{ numero: number | 
        SELECT (SELECT id FROM remito) AS numero,
               (SELECT count(*) FROM guardadas) AS lineas,
               COALESCE((SELECT json_agg(faltantes) FROM faltantes), '[]'::json) AS faltantes`,
-      [lineas, r.fecha, r.tipo, r.responsable, r.observaciones, r.destinatario],
+      [
+        lineas, r.fecha, r.tipo, r.responsable, r.observaciones, r.destinatario,
+        r.procedencia, r.procedenciaDetalle, r.destino, r.destinoDetalle,
+      ],
     ),
   ]);
   return { numero: resultado.numero ?? null, faltantes: resultado.faltantes as Faltante[] };

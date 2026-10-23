@@ -264,6 +264,27 @@ El remito de prueba (000003) se borró. Para ese momento el vivero ya había gua
 usuario y el campo **Responsable** del remito se completará solo con el usuario que inició sesión (hoy se
 recuerda el último nombre escrito en cada dispositivo).
 
+## 2026-10-23: procedencia y destino
+
+**Pedido:** agregar Procedencia (Palma Sola, Goya, Pilar, Benavidez, Proveedor) y Destino (Palma Sola, Goya,
+Pilar, Benavidez, Cliente); con Proveedor o Cliente, poder especificar cuál.
+
+**Qué se hizo**
+- Dos desplegables en "Datos del remito", uno al lado del otro, que arrancan en "Sin especificar"
+  (opcionales). Con Proveedor o Cliente aparece un renglón "¿Cuál?", obligatorio en ese caso, con sugerencias
+  de los nombres ya usados.
+- Columnas nuevas en `remitos`: `procedencia`, `procedencia_detalle`, `destino`, `destino_detalle`.
+- Se muestran en el remito de Cargar y en el impreso: "Procedencia: Proveedor (Vivero X)", "Destino: Goya".
+- El destinatario sigue como campo aparte, ahora pensado para la persona o contacto que recibe.
+
+**Probado** contra la base real: remito con procedencia Proveedor y destino Cliente (sin el nombre no deja
+guardar; con el nombre se guarda y sale en el impreso), sugerencia del proveedor al volver a cargar, y celu
+sin desbordes. El remito de prueba se borró; quedan los 2 remitos del vivero y el próximo es el 000003.
+
+**Idea para más adelante:** el stock hoy es uno solo para todo Native. Si hace falta saber cuánto hay en cada
+lugar (Palma Sola, Goya, Pilar, Benavidez), se puede llevar el stock por lugar usando procedencia y destino
+(por ejemplo, un pase de Goya a Pilar resta en Goya y suma en Pilar).
+
 **Pendiente**
 - [ ] Revisión del listado de especies (árboles y palmeras) por alguien del vivero.
 - [ ] ¿Sumar las otras especies exóticas de la planilla de cotizaciones y de la web (fresnos, liquidámbar,
