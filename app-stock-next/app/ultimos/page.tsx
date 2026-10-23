@@ -1,5 +1,5 @@
 import { leerCatalogo, leerUltimos } from '@/lib/almacen';
-import { fechaLegible } from '@/lib/stock';
+import { etiquetaTamano, fechaLegible } from '@/lib/stock';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +29,7 @@ export default async function PaginaUltimos() {
                 <td className={`tipo-${m.tipo}`}>{m.tipo}</td>
                 <td>{nombres.get(m.codigo) ?? m.codigo}</td>
                 <td>
-                  {m.presentacion} {m.tamano}
+                  {m.presentacion} {etiquetaTamano(m.tamano, m.tamanoDetalle)}
                 </td>
                 <td className="num">{m.cantidad}</td>
                 <td className="solo-ancho">{m.responsable}</td>

@@ -172,6 +172,28 @@ presupuesto (PDF de Native S.A.) y de https://www.nativetrees.com.ar/.
 **Probado:** compila sin errores. Filtro de palmeras (21), panel de stock en Cargar y la lista en compu,
 tablet y celu (320 px y 375 px): sin desbordes ni textos cortados.
 
+## 2026-10-23: ajustes de tamaños y "Especificar"
+
+**Pedido:** quitar 1Kg, 12-14RD y 150-180cm; cambiar "E65L" por "65Lt" y "26-30" por "25-30"; y que al elegir
+"Especificar" aparezca un renglón para escribir el tamaño.
+
+**Qué se hizo**
+- Lista de tamaños actualizada en `lib/almacen.ts` (para bases nuevas) y en la base real con un ajuste de una
+  sola vez: no había movimientos con esos tamaños, así que no se perdió nada. Quedan 28 tamaños.
+- "Especificar": aparece un renglón obligatorio debajo del desplegable (hasta 60 letras). Lo escrito se guarda
+  en la columna nueva `tamano_detalle` de `movimientos` y se muestra como tamaño en Stock, Cargar y Últimos.
+  Cada tamaño escrito lleva su propio stock; se sacan los espacios de más para que "5 m" y "5  m " sumen
+  juntos, y los tamaños ya escritos se sugieren al escribir.
+- Los movimientos viejos (antes de este cambio) siguen funcionando: `tamano_detalle` queda vacío.
+
+**Probado** contra la base real, en tamaño celular: entrada de 4 Pindós con "5 m de altura" y salida de 1
+escribiendo "  5  m de altura " (se descontó del mismo stock: quedaron 3). Los dos movimientos de prueba se
+borraron. Compila sin errores.
+
+**Nota:** durante la prueba aparecieron 3 movimientos cargados por el vivero (14:38, sin responsable):
+1 Palmera canaria y 2 Fénix enana, todas envasado 4Mts. No se tocaron. Las dos de Fénix enana son iguales:
+revisar si fue un doble envío.
+
 **Pendiente**
 - [ ] Revisión del listado de especies (árboles y palmeras) por alguien del vivero.
 - [ ] ¿Sumar las otras especies exóticas de la planilla de cotizaciones y de la web (fresnos, liquidámbar,

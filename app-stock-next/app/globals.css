@@ -81,6 +81,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 label { display: block; margin: 14px 0 6px; font-weight: 600; font-size: .9rem; color: var(--verde-oscuro); }
 .ayuda { color: var(--gris); font-size: .85rem; margin-top: 4px; }
 .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* El renglón que aparece debajo del desplegable al elegir "Especificar". */
+.renglon-extra { margin-top: 8px; }
 
 .tipos { display: flex; gap: 8px; }
 .tipos button {

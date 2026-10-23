@@ -10,22 +10,39 @@ export function cantidadConSigno(tipo: TipoMovimiento, cantidad: number): number
   return cantidad;
 }
 
+/** El tamaño que, al elegirlo, pide escribir el tamaño a mano. */
+export const TAMANO_A_ESPECIFICAR = 'Especificar';
+
+// Cómo se muestra el tamaño: si es "Especificar", lo que se escribió a mano.
+export function etiquetaTamano(tamano: string, detalle: string): string {
+  return tamano === TAMANO_A_ESPECIFICAR && detalle ? detalle : tamano;
+}
+
 // El stock se lleva por presentación y tamaño juntos: "Maceta · 3Lts".
 export function claveStock(presentacion: string, tamano: string): string {
   return `${presentacion} · ${tamano}`;
 }
 
-// Las combinaciones de presentación y tamaño que tienen stock (distinto de cero), en orden.
+// Las combinaciones de presentación y tamaño que tienen stock (distinto de cero), en orden:
+// por presentación y por tamaño según las listas; los tamaños escritos a mano van al final, por nombre.
 export function stockPorPresentacion(
   stock: Stock,
   codigo: string,
   presentaciones: string[],
   tamanos: string[],
 ): [clave: string, cantidad: number][] {
-  return presentaciones
-    .flatMap(p => tamanos.map(t => claveStock(p, t)))
-    .map(clave => [clave, stock[codigo]?.[clave] ?? 0] as [string, number])
-    .filter(([, n]) => n !== 0);
+  const posicion = (clave: string) => {
+    const [p, ...resto] = clave.split(' · ');
+    const t = tamanos.indexOf(resto.join(' · '));
+    return [presentaciones.indexOf(p), t === -1 ? tamanos.length : t] as const;
+  };
+  return Object.entries(stock[codigo] ?? {})
+    .filter(([, n]) => n !== 0)
+    .sort(([a], [b]) => {
+      const [pa, ta] = posicion(a);
+      const [pb, tb] = posicion(b);
+      return pa - pb || ta - tb || a.localeCompare(b, 'es');
+    });
 }
 
 export function totalEspecie(stock: Stock, codigo: string): number {

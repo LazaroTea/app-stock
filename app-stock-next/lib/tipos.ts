@@ -23,6 +23,8 @@ export interface Movimiento {
   presentacion: string;
   /** De la lista de tamaños (ej. "12-14", "3Lts", "Ejemplar"). */
   tamano: string;
+  /** Lo escrito a mano cuando el tamaño es "Especificar"; vacío en los demás. */
+  tamanoDetalle: string;
   /** Entradas y salidas van sin signo; los ajustes pueden ser negativos. */
   cantidad: number;
   responsable: string;

@@ -65,12 +65,14 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 
 ## Cómo se usa
 
-- **Stock:** cada especie muestra su total y el detalle por presentación y tamaño (ej. "Raíz desnuda · 12-14RD: 7").
+- **Stock:** cada especie muestra su total y el detalle por presentación y tamaño (ej. "Raíz desnuda · 12-14: 7").
   Arriba hay tres números: total de plantas, especies con stock y especies bajo el mínimo (tocándolo se ven
   solo esas). De entrada se ven solo las especies **con stock**; con los filtros se elige una **región** o
   se ven **todas**; también se puede ver **solo árboles** o **solo palmeras**. Al buscar por nombre aparecen también las que no tienen stock.
 - **Cargar:** tipo de movimiento, especie, presentación (botones), tamaño (desplegable), cantidad y fecha.
-  El tamaño no viene elegido de entrada, para que no se guarde uno por descuido.
+  El tamaño no viene elegido de entrada, para que no se guarde uno por descuido. Si se elige
+  **Especificar**, aparece un renglón para escribir el tamaño a mano (ej. "5 m de altura"); los ya escritos
+  se sugieren para que se escriban siempre igual. Cada tamaño escrito lleva su propio stock.
 - **Últimos:** los últimos 30 movimientos.
 
 | Pantalla | Cómo se acomoda |
@@ -104,7 +106,8 @@ Hay cuatro tablas:
 - **especies**: código, nombre común, nombre científico, región (o "Exótica"), grupo (Árbol o Palmera), stock mínimo.
 - **presentaciones**: Maceta, Raíz desnuda, Envasado (y su orden).
 - **tamanos**: los tamaños y su orden.
-- **movimientos**: cada entrada, salida o ajuste, con su presentación y tamaño.
+- **movimientos**: cada entrada, salida o ajuste, con su presentación y tamaño (y en `tamano_detalle`, lo
+  escrito a mano cuando el tamaño es "Especificar").
 
 El stock no se guarda: la base lo calcula sumando los movimientos.
 

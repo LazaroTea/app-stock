@@ -2,7 +2,7 @@
 // Lo que se ejecuta en el servidor cuando alguien guarda un movimiento.
 import { revalidatePath } from 'next/cache';
 import { guardarMovimiento, leerCatalogo } from '@/lib/almacen';
-import { buscarEspecie, cantidadConSigno } from '@/lib/stock';
+import { buscarEspecie, cantidadConSigno, etiquetaTamano, TAMANO_A_ESPECIFICAR } from '@/lib/stock';
 import { TIPOS, type TipoMovimiento } from '@/lib/tipos';
 
 export interface Resultado {
@@ -14,6 +14,10 @@ export async function registrarMovimiento(_anterior: Resultado | null, form: For
   const tipo = String(form.get('tipo')) as TipoMovimiento;
   const presentacion = String(form.get('presentacion') ?? '');
   const tamano = String(form.get('tamano') ?? '');
+  // Solo cuenta si el tamaño es "Especificar". Se sacan los espacios de más para que
+  // "5 m" y "5  m " sumen al mismo stock.
+  const tamanoDetalle =
+    tamano === TAMANO_A_ESPECIFICAR ? String(form.get('tamano_detalle') ?? '').trim().replace(/\s+/g, ' ') : '';
   const cantidad = Number(form.get('cantidad'));
   const fecha = String(form.get('fecha') ?? '');
 
@@ -30,7 +34,9 @@ export async function registrarMovimiento(_anterior: Resultado | null, form: For
     if (!especie) return { ok: false, mensaje: 'Elegí una especie de la lista.' };
     if (!presentaciones.includes(presentacion)) return { ok: false, mensaje: `La presentación "${presentacion}" no existe.` };
     if (!tamanos.includes(tamano)) return { ok: false, mensaje: 'Elegí un tamaño de la lista.' };
-    const detalle = `${especie.comun} (${presentacion.toLowerCase()}, ${tamano})`;
+    if (tamano === TAMANO_A_ESPECIFICAR && !tamanoDetalle) return { ok: false, mensaje: 'Escribí el tamaño.' };
+    if (tamanoDetalle.length > 60) return { ok: false, mensaje: 'El tamaño escrito es muy largo (máximo 60 letras).' };
+    const detalle = `${especie.comun} (${presentacion.toLowerCase()}, ${etiquetaTamano(tamano, tamanoDetalle)})`;
 
     const cambio = cantidadConSigno(tipo, cantidad);
     const { habia, guardado } = await guardarMovimiento({
@@ -39,6 +45,7 @@ export async function registrarMovimiento(_anterior: Resultado | null, form: For
       codigo: especie.codigo,
       presentacion,
       tamano,
+      tamanoDetalle,
       cantidad,
       cambio,
       responsable: String(form.get('responsable') ?? '').trim(),

@@ -1,7 +1,16 @@
 'use client';
 import { startTransition, useActionState, useEffect, useState } from 'react';
 import { registrarMovimiento } from '../acciones';
-import { bajoMinimo, buscarEspecie, claveStock, etiquetaEspecie, stockPorPresentacion, totalEspecie } from '@/lib/stock';
+import {
+  bajoMinimo,
+  buscarEspecie,
+  claveStock,
+  etiquetaEspecie,
+  etiquetaTamano,
+  stockPorPresentacion,
+  TAMANO_A_ESPECIFICAR,
+  totalEspecie,
+} from '@/lib/stock';
 import { TIPOS, type Especie, type Stock, type TipoMovimiento } from '@/lib/tipos';
 
 const AYUDAS: Record<TipoMovimiento, string> = {
@@ -25,6 +34,7 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, h
   const [presentacion, setPresentacion] = useState(presentaciones[0] ?? '');
   // Sin tamaño elegido de entrada, para que no se guarde uno por descuido.
   const [tamano, setTamano] = useState('');
+  const [tamanoDetalle, setTamanoDetalle] = useState('');
   const [cantidad, setCantidad] = useState('');
   const [fecha, setFecha] = useState(hoy);
   const [responsable, setResponsable] = useState('');
@@ -45,8 +55,22 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, h
     }
   }, [resultado]);
 
+  const especificar = tamano === TAMANO_A_ESPECIFICAR;
+  const tamanoElegido = etiquetaTamano(tamano, tamanoDetalle.trim().replace(/\s+/g, ' '));
   const elegida = buscarEspecie(especies, especie);
-  const disponible = elegida && tamano ? (stock[elegida.codigo]?.[claveStock(presentacion, tamano)] ?? 0) : null;
+  const disponible =
+    elegida && tamano && (!especificar || tamanoDetalle.trim())
+      ? (stock[elegida.codigo]?.[claveStock(presentacion, tamanoElegido)] ?? 0)
+      : null;
+  // Tamaños escritos a mano en otros movimientos, para sugerirlos y que se escriban siempre igual.
+  const yaEspecificados = [
+    ...new Set(
+      Object.values(stock)
+        .flatMap(Object.keys)
+        .map(clave => clave.split(' · ').slice(1).join(' · '))
+        .filter(t => !tamanos.includes(t)),
+    ),
+  ].sort((a, b) => a.localeCompare(b, 'es'));
   const delaEspecie = elegida ? stockPorPresentacion(stock, elegida.codigo, presentaciones, tamanos) : [];
 
   return (
@@ -129,9 +153,31 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, h
             <option key={t}>{t}</option>
           ))}
         </select>
+        {especificar && (
+          <>
+            <input
+              id="tamano_detalle"
+              name="tamano_detalle"
+              className="renglon-extra"
+              aria-label="Escribí el tamaño"
+              placeholder="Escribí el tamaño (ej.: 5 m de altura)"
+              list="lista-especificados"
+              maxLength={60}
+              value={tamanoDetalle}
+              onChange={e => setTamanoDetalle(e.target.value)}
+              required
+              autoFocus
+            />
+            <datalist id="lista-especificados">
+              {yaEspecificados.map(t => (
+                <option key={t} value={t} />
+              ))}
+            </datalist>
+          </>
+        )}
         {disponible !== null && (
           <div className="ayuda">
-            Hay {disponible} en {presentacion.toLowerCase()}, {tamano}.
+            Hay {disponible} en {presentacion.toLowerCase()}, {tamanoElegido}.
           </div>
         )}
 
@@ -197,7 +243,7 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, h
                   )}
                   {delaEspecie.map(([clave, n]) => (
                     <tr key={clave}>
-                      <td>{clave === claveStock(presentacion, tamano) ? <b>{clave}</b> : clave}</td>
+                      <td>{clave === claveStock(presentacion, tamanoElegido) ? <b>{clave}</b> : clave}</td>
                       <td className="num">{n}</td>
                     </tr>
                   ))}

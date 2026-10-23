@@ -7,7 +7,7 @@
 import 'server-only';
 import { neon } from '@neondatabase/serverless';
 import { ESPECIES } from './especies';
-import { claveStock } from './stock';
+import { claveStock, etiquetaTamano, TAMANO_A_ESPECIFICAR } from './stock';
 import type { Especie, Movimiento, Stock, TipoMovimiento } from './tipos';
 
 /** Cómo se entregan las plantas, en el orden en que se muestran. */
@@ -16,19 +16,20 @@ export const PRESENTACIONES = ['Maceta', 'Raíz desnuda', 'Envasado'];
 /**
  * Tamaños: los de la lista desplegable de la columna "Tamaño" de la planilla de cotizaciones del vivero
  * (pestaña CONSULTATIO), ordenados por grupo. "2,5Mts" en la planilla aparecía partido en "2" y "5Mts".
+ * Ajustes del vivero (2026-10-23): sin 1Kg, 12-14RD ni 150-180cm; "E65L" pasó a "65Lt" y "26-30" a "25-30".
  * Después de creada la base, se agregan o cambian desde el panel de Neon (tabla "tamanos").
  */
 export const TAMANOS = [
   // Grosor del tronco (cm)
-  'Varillon', '4-6', '6-8', '8-10', '10-12', '12-14', '14-16', '16-18', '20-22', '20-25', '26-30', '12-14RD',
+  'Varillon', '4-6', '6-8', '8-10', '10-12', '12-14', '14-16', '16-18', '20-22', '20-25', '25-30',
   // Altura
-  '150-180cm', '2,5Mts', '3Mts', '4Mts',
+  '2,5Mts', '3Mts', '4Mts',
   // Volumen del envase
-  '1Lt', '3Lts', '4Lts', '10Lts', '15Lts', '20Lts', '30Lts', '40Lts', '50Lts', 'E65L',
+  '1Lt', '3Lts', '4Lts', '10Lts', '15Lts', '20Lts', '30Lts', '40Lts', '50Lts', '65Lt',
   // Categoría
   'Semi Ejemplar', 'Ejemplar', 'Super Ejemplar',
-  // Otros
-  '1Kg', 'Especificar',
+  // Otro tamaño: al elegirlo, el formulario pide escribirlo (se guarda en "tamano_detalle").
+  TAMANO_A_ESPECIFICAR,
 ];
 
 // Número cualquiera que identifica el "candado" de la base (ver más abajo).
@@ -104,6 +105,8 @@ async function crearTablas() {
       observaciones text NOT NULL DEFAULT '',
       registrado timestamptz NOT NULL DEFAULT now()
     )`,
+    // Lo que se escribe a mano cuando el tamaño es "Especificar" (vacío en los demás).
+    sql`ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS tamano_detalle text NOT NULL DEFAULT ''`,
     sql`INSERT INTO especies (codigo, comun, cientifico, region, grupo, minimo)
       SELECT * FROM json_to_recordset(${JSON.stringify(ESPECIES)}::json)
         AS x (codigo text, comun text, cientifico text, region text, grupo text, minimo integer)
@@ -139,15 +142,20 @@ export async function leerCatalogo(): Promise<Catalogo> {
   };
 }
 
-/** El stock actual, sumado por la base de datos: { código: { "presentación · tamaño": cantidad } }. */
+/**
+ * El stock actual, sumado por la base de datos: { código: { "presentación · tamaño": cantidad } }.
+ * Con "Especificar", cada tamaño escrito a mano se cuenta aparte (ej. "Maceta · 5 m de altura").
+ */
 export async function leerStock(): Promise<Stock> {
   await prepararBase();
   const filas = await conexion().query(
-    `SELECT codigo, presentacion, tamano, SUM(${CANTIDAD_CON_SIGNO})::int AS cantidad
-     FROM movimientos GROUP BY codigo, presentacion, tamano`,
+    `SELECT codigo, presentacion, tamano, tamano_detalle, SUM(${CANTIDAD_CON_SIGNO})::int AS cantidad
+     FROM movimientos GROUP BY codigo, presentacion, tamano, tamano_detalle`,
   );
   const stock: Stock = {};
-  for (const f of filas) (stock[f.codigo] ??= {})[claveStock(f.presentacion, f.tamano)] = f.cantidad;
+  for (const f of filas) {
+    (stock[f.codigo] ??= {})[claveStock(f.presentacion, etiquetaTamano(f.tamano, f.tamano_detalle))] = f.cantidad;
+  }
   return stock;
 }
 
@@ -156,8 +164,8 @@ export async function leerUltimos(cantidad: number): Promise<{ movimientos: Movi
   await prepararBase();
   const sql = conexion();
   const [filas, [{ total }]] = await Promise.all([
-    sql`SELECT id, to_char(fecha, 'YYYY-MM-DD') AS fecha, tipo, codigo, presentacion, tamano, cantidad,
-          responsable, observaciones, registrado::text AS registrado
+    sql`SELECT id, to_char(fecha, 'YYYY-MM-DD') AS fecha, tipo, codigo, presentacion, tamano,
+          tamano_detalle AS "tamanoDetalle", cantidad, responsable, observaciones, registrado::text AS registrado
         FROM movimientos ORDER BY fecha DESC, id DESC LIMIT ${cantidad}`,
     sql`SELECT count(*)::int AS total FROM movimientos`,
   ]);
@@ -170,6 +178,8 @@ export interface MovimientoNuevo {
   codigo: string;
   presentacion: string;
   tamano: string;
+  /** Lo escrito a mano cuando el tamaño es "Especificar"; vacío en los demás. */
+  tamanoDetalle: string;
   cantidad: number;
   /** La cantidad que suma o resta al stock (negativa en las salidas). */
   cambio: number;
@@ -191,14 +201,14 @@ export async function guardarMovimiento(m: MovimientoNuevo): Promise<{ habia: nu
     sql.query(
       `WITH actual AS (
          SELECT COALESCE(SUM(${CANTIDAD_CON_SIGNO}), 0)::int AS habia
-         FROM movimientos WHERE codigo = $1 AND presentacion = $2 AND tamano = $9
+         FROM movimientos WHERE codigo = $1 AND presentacion = $2 AND tamano = $9 AND tamano_detalle = $10
        ), nuevo AS (
-         INSERT INTO movimientos (fecha, tipo, codigo, presentacion, tamano, cantidad, responsable, observaciones)
-         SELECT $3, $4, $1, $2, $9, $5, $6, $7 FROM actual WHERE habia + $8 >= 0
+         INSERT INTO movimientos (fecha, tipo, codigo, presentacion, tamano, tamano_detalle, cantidad, responsable, observaciones)
+         SELECT $3, $4, $1, $2, $9, $10, $5, $6, $7 FROM actual WHERE habia + $8 >= 0
          RETURNING id
        )
        SELECT habia, EXISTS (SELECT 1 FROM nuevo) AS guardado FROM actual`,
-      [m.codigo, m.presentacion, m.fecha, m.tipo, m.cantidad, m.responsable, m.observaciones, m.cambio, m.tamano],
+      [m.codigo, m.presentacion, m.fecha, m.tipo, m.cantidad, m.responsable, m.observaciones, m.cambio, m.tamano, m.tamanoDetalle],
     ),
   ]);
   return { habia: resultado.habia, guardado: resultado.guardado };
