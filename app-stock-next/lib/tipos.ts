@@ -67,6 +67,8 @@ export interface Usuario {
   id: number;
   nombre: string;
   rol: Rol;
+  /** La clave es provisoria (la inicial o una dada por un administrador): hay que cambiarla antes de seguir. */
+  cambiarClave: boolean;
 }
 
 /** { código de especie: { "presentación · tamaño": cantidad } } (ver claveStock en lib/stock.ts) */

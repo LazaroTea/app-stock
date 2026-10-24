@@ -62,6 +62,9 @@ header { background: var(--verde); color: var(--crema); }
   display: flex; flex-direction: column; align-items: flex-end; line-height: 1.15;
   font-family: var(--fuente-titulos), sans-serif; font-weight: 600; font-size: .85rem;
 }
+.usuario-nombre { color: var(--crema); text-decoration: none; text-align: right; }
+.usuario-nombre:hover small { text-decoration: underline; }
+.reglas-clave { padding-left: 18px; }
 .usuario-nombre small { font-weight: 500; font-size: .68rem; letter-spacing: .06em; opacity: .8; }
 button.salir {
   min-height: 36px; padding: 6px 12px; border: 1px solid rgba(249, 241, 217, .6); border-radius: 8px;
@@ -69,6 +72,21 @@ button.salir {
   text-transform: uppercase; cursor: pointer;
 }
 button.salir:hover { background: rgba(249, 241, 217, .12); }
+
+/* Pantalla Usuarios (administradores). */
+.usuarios > * + * { margin-top: 16px; }
+.usuario-cabeza { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 1.05rem; }
+.etiqueta {
+  padding: 2px 8px; border-radius: 999px; background: var(--salvia-claro); color: var(--verde-oscuro);
+  font-family: var(--fuente-titulos), sans-serif; font-size: .7rem; font-weight: 600;
+}
+.etiqueta.baja { background: var(--rojo-claro); color: var(--rojo); }
+.usuario-tarjeta.de-baja { opacity: .7; }
+/* La clave provisoria recién creada, grande para dictarla o copiarla. */
+.clave-provisoria {
+  margin: 10px 0 4px; font-family: var(--fuente-titulos), monospace; font-size: 2rem; font-weight: 700;
+  letter-spacing: .2em; user-select: all;
+}
 
 /* Pantalla de ingreso. */
 .ingreso { max-width: 380px; margin: 24px auto; padding: 20px; }
@@ -377,11 +395,15 @@ td.num.suma { color: var(--verde); font-weight: 600; }
 
 /* ---------- Compu: desde 1024px ---------- */
 
-@media (min-width: 1024px) {
+/* El lema, solo en pantallas anchas: en 1024 px no entra junto a las pestañas y el usuario. */
+@media (min-width: 1280px) {
   .lema {
     display: block; font-family: var(--fuente-titulos), sans-serif; font-size: .68rem; font-weight: 600;
     letter-spacing: .1em; text-transform: uppercase; opacity: .85; white-space: nowrap;
   }
+}
+
+@media (min-width: 1024px) {
 
   .grilla { grid-template-columns: repeat(3, 1fr); }
 

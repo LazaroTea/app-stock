@@ -74,11 +74,27 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 
   | Usuario | Rol | Qué puede hacer |
   |---|---|---|
-  | Gustavo, Rocío | **Administrador** | Todo, también modificar y anular remitos. |
+  | Gustavo, Rocío | **Administrador** | Todo: también modificar y anular remitos, y la pantalla **Usuarios**. |
   | Ezequiel, Martin, Estela, Martina, Sebastián, María | **Colaborador** | Cargar movimientos y ajustes, ver el stock y Últimos, e imprimir remitos. No puede modificar ni anular. |
 
-  Por ahora **todos tienen la clave 1234** (provisoria, hasta que se definan los criterios de seguridad).
-  Las claves se guardan encriptadas: ni mirando la base se puede leer cuál es.
+- **Primera vez (clave provisoria):** todos arrancan con la clave provisoria **1234**. Al entrar con una clave
+  provisoria, la app pide elegir una propia antes de dejar hacer cualquier otra cosa.
+- **Reglas de la clave:** al menos 8 letras o números, que no tenga el nombre de la persona, que no sea una
+  clave muy común (12345678, password…) ni el mismo carácter repetido. Se cambian en `lib/claves.ts`.
+- **Cambiar la clave propia:** tocando el nombre arriba a la derecha (**Mi clave**). Pide la clave actual y la
+  nueva dos veces. Al cambiarla, se cierran las sesiones abiertas en los demás dispositivos.
+- **Clave equivocada:** después de **5 intentos equivocados seguidos**, el usuario queda bloqueado
+  **15 minutos**. Un administrador lo puede desbloquear antes dándole una clave provisoria.
+- Las claves se guardan encriptadas: ni mirando la base se puede leer cuál es.
+- **Usuarios** (pestaña solo para administradores):
+  - **Agregar usuario:** nombre y rol. La app crea una **clave provisoria** de 6 números y la muestra **una sola
+    vez**: hay que anotarla y pasársela a la persona (en persona o por mensaje privado). Al ingresar, elige la suya.
+  - **Clave provisoria:** para quien se olvidó la clave o quedó bloqueado. La clave anterior deja de servir.
+  - **Rol:** se cambia en el desplegable de cada uno.
+  - **Dar de baja:** la persona ya no puede ingresar (y se cierran sus sesiones). Sus remitos quedan.
+    Se puede **dar de alta** otra vez.
+  - Nadie se puede cambiar el rol ni dar de baja a sí mismo: así siempre queda al menos un administrador.
+  - De cada uno se ve el último ingreso y si está bloqueado o con clave provisoria.
 - **Stock:** arriba se elige qué ver: **Todos** (los tres depósitos sumados) o un depósito. Cada especie
   muestra su total y el detalle por presentación y tamaño (ej. "Raíz desnuda · 12-14: 7"); con "Todos",
   también cuánto hay en cada depósito ("Pilar: −2 · Goya: 6"). Los números en negativo salen en rojo.
@@ -153,7 +169,9 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 | `lib/permisos.ts` | Qué puede hacer cada rol (modificar y anular: solo administradores). |
 | `app/login/`, `app/sesion.ts` | Pantalla de ingreso, y lo que pasa en el servidor al ingresar y al salir. |
 | `lib/sesion.ts` | Averigua quién ingresó (cookie "sesion"); si nadie, lleva a la pantalla de ingreso. |
-| `lib/claves.ts` | Encripta las claves y las revisa al ingresar. |
+| `lib/claves.ts` | Encripta las claves, las revisa al ingresar, las reglas para elegir una y las claves provisorias. |
+| `app/clave/` | Pantalla **Mi clave** (cambiar la clave propia; obligatoria con clave provisoria). |
+| `app/usuarios/` | Pantalla **Usuarios** (solo administradores) y lo que pasa en el servidor desde ahí. |
 | `lib/empresa.ts` | Los datos de Native que salen en el remito impreso. |
 | `app/not-found.tsx` | Lo que se ve si se entra a algo que no existe. |
 | `app/ultimos/page.tsx` | Pantalla **Últimos**: los últimos 30 movimientos. |
@@ -186,17 +204,17 @@ Hay siete tablas:
   remito (`remito_id`) y el número de línea (`linea`). Un movimiento entre dos depósitos genera dos filas por
   línea: −N en el de partida y +N en el de llegada.
 
-- **usuarios**: nombre, clave (encriptada), rol (Administrador o Colaborador) y si está activo (`activo`).
+- **usuarios**: nombre, clave (encriptada), rol (Administrador o Colaborador), si está activo (`activo`), si
+  la clave es provisoria (`cambiar_clave`), los intentos equivocados (`intentos_fallidos`, `bloqueado_hasta`)
+  y el último ingreso (`ultimo_ingreso`).
 - **sesiones**: un código al azar por cada dispositivo donde alguien ingresó, de qué usuario es y cuándo vence.
 
 El stock no se guarda: la base lo calcula sumando los movimientos de cada depósito.
 
 - La primera vez que se abre la app, crea las tablas y carga especies, presentaciones y tamaños. Solo lo hace
   si están **vacías**: nunca pisa datos que ya existen.
-- Los 8 usuarios iniciales se cargan solo si la tabla `usuarios` está vacía. Para **sacarle el acceso** a
-  alguien, en el panel de Neon se pone `activo` en `false` en su fila (sus sesiones dejan de valer al
-  instante). Para **cambiar un rol**, se cambia `rol` en su fila. Agregar usuarios o cambiar claves todavía no
-  se puede desde la app (queda pendiente).
+- Los 8 usuarios iniciales se cargan solo si la tabla `usuarios` está vacía. Después, los usuarios se
+  manejan desde la pantalla **Usuarios** de la app.
 - Las tablas se pueden ver y editar desde el panel de Neon (**Tables**). Por ejemplo, para cargar el
   stock mínimo de una especie, o para **agregar un tamaño** (fila nueva en `tamanos`, con un número de
   `orden` para ubicarlo en la lista).
@@ -223,6 +241,28 @@ El stock no se guarda: la base lo calcula sumando los movimientos de cada depós
 2. La base tiene que estar conectada al proyecto: **Storage → Neon**. Así Vercel carga sola la variable
    `DATABASE_URL`, sin copiarla a mano. Para revisarlo: **Settings → Environment Variables**.
 3. Cada vez que se sube un cambio a GitHub, Vercel vuelve a publicar la app solo.
+
+## Cambiar la contraseña de la base (Neon)
+
+La conexión a la base lleva una contraseña (la del usuario `neondb_owner`). Si alguna vez quedó a la vista
+(por ejemplo, pegada en un chat), conviene cambiarla. Lo hacés vos: la contraseña nueva **no se pega en el
+chat** ni en ningún otro lado que no sea Neon, Vercel y el archivo `.env.local`.
+
+1. **Neon:** entrá a [console.neon.tech](https://console.neon.tech) (o desde Vercel: **Storage** → la base →
+   **Open in Neon**). En el proyecto, andá a **Branches** → `main` → **Roles & Databases**. En el rol
+   `neondb_owner`, en el menú de los tres puntos, elegí **Reset password**. Neon muestra la contraseña nueva
+   **una sola vez**: copiala (o copiá la **connection string** completa, desde el botón **Connect**).
+   Desde ese momento, la contraseña vieja deja de andar: la app publicada va a dar error hasta el paso 2.
+2. **Vercel:** en el proyecto, **Settings → Environment Variables**. Si la base está conectada desde
+   **Storage**, puede que Vercel ya tenga la contraseña nueva: tocá el ojito de `DATABASE_URL` y fijate si
+   cambió. Si no, editá cada variable que tenga la contraseña vieja adentro (`DATABASE_URL`, `POSTGRES_URL`,
+   `PGPASSWORD`, `POSTGRES_PASSWORD` y las demás de `POSTGRES_…` y `DATABASE_…`) y reemplazá la vieja por la
+   nueva. Después, en **Deployments**, en la última publicación: tres puntos → **Redeploy**.
+3. **Tu compu (`.env.local`):** abrí `app-stock-next/.env.local` con el Bloc de notas. Copiá la contraseña
+   vieja (está después de `PGPASSWORD=`). Apretá **Ctrl+H**, pegá la vieja en **Buscar**, la nueva en
+   **Reemplazar por**, y tocá **Reemplazar todo**. Guardá con **Ctrl+S**.
+4. **Probar:** abrí la app publicada y la de tu compu, y fijate que muestren el stock. (También le podés pedir a
+   Claude que pruebe la conexión: lo hace sin mostrar la contraseña.)
 
 ## Diferencias con la versión de Google
 

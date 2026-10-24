@@ -124,13 +124,15 @@ function resumen(lineas: LineaRemito[]): string {
   return `${lineas.length} ${lineas.length === 1 ? 'línea' : 'líneas'}, ${plantas} ${plantas === 1 ? 'planta' : 'plantas'}`;
 }
 
-const SIN_SESION = 'Tu sesión se cerró: tocá Stock para volver a ingresar. Lo que ibas cargando queda guardado en este dispositivo.';
+// Sin sesión, o con clave provisoria (hay que cambiarla antes de cargar).
+const SIN_SESION =
+  'Tu sesión se cerró o tenés que cambiar la clave: tocá Stock para seguir. Lo que ibas cargando queda guardado en este dispositivo.';
 const ERROR_BASE = 'No se pudo guardar: hubo un problema con la base de datos. Probá de nuevo en un rato.';
 
 export async function registrarRemito(_anterior: Resultado | null, remito: RemitoEnviado): Promise<Resultado> {
   try {
     const usuario = await usuarioActual();
-    if (!usuario) return { ok: false, mensaje: SIN_SESION };
+    if (!usuario || usuario.cambiarClave) return { ok: false, mensaje: SIN_SESION };
     const nuevo = await revisarRemito(remito, usuario.nombre);
     if (typeof nuevo === 'string') return { ok: false, mensaje: nuevo };
     const numero = await guardarRemito(nuevo);
@@ -146,7 +148,7 @@ export async function registrarRemito(_anterior: Resultado | null, remito: Remit
 export async function modificarRemito(numero: number, _anterior: Resultado | null, remito: RemitoEnviado): Promise<Resultado> {
   try {
     const usuario = await usuarioActual();
-    if (!usuario) return { ok: false, mensaje: SIN_SESION };
+    if (!usuario || usuario.cambiarClave) return { ok: false, mensaje: SIN_SESION };
     if (!puedeModificarRemitos(usuario)) return { ok: false, mensaje: 'No tenés permiso para modificar remitos.' };
     // Acá "responsable" es quien modifica: se guarda como modificado_por (ver modificarRemito en lib/almacen.ts).
     const nuevo = await revisarRemito(remito, usuario.nombre);
@@ -169,7 +171,7 @@ export async function anularRemito(numero: number, motivo: string): Promise<Resu
   if (m.length > 200) return { ok: false, mensaje: 'El motivo es muy largo (máximo 200 letras).' };
   try {
     const usuario = await usuarioActual();
-    if (!usuario) return { ok: false, mensaje: SIN_SESION };
+    if (!usuario || usuario.cambiarClave) return { ok: false, mensaje: SIN_SESION };
     if (!puedeAnularRemitos(usuario)) return { ok: false, mensaje: 'No tenés permiso para anular remitos.' };
     if (!(await marcarAnulado(numero, m, usuario.nombre))) return { ok: false, mensaje: 'El remito no existe o ya estaba anulado.' };
     revalidatePath('/', 'layout');

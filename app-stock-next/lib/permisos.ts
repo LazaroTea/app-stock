@@ -1,5 +1,5 @@
 // Quién puede hacer qué, según el rol del usuario (ver ROLES en lib/tipos.ts):
-// - Administrador: todo.
+// - Administrador: todo, también la pantalla Usuarios (agregar, dar de baja, cambiar roles y dar claves provisorias).
 // - Colaborador: cargar movimientos y ajustes, y ver el stock y los remitos; no modificar ni anular.
 //
 // Las pantallas (para mostrar u ocultar los botones) y el servidor (para rechazar el pedido aunque alguien
@@ -13,5 +13,10 @@ export function puedeModificarRemitos(usuario: Usuario | null): boolean {
 
 /** Puede anular un remito (deja de contar en el stock, pero no se borra). */
 export function puedeAnularRemitos(usuario: Usuario | null): boolean {
+  return usuario?.rol === 'Administrador';
+}
+
+/** Puede entrar a la pantalla Usuarios. */
+export function puedeAdministrarUsuarios(usuario: Usuario | null): boolean {
   return usuario?.rol === 'Administrador';
 }

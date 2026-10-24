@@ -158,6 +158,14 @@ async function crearTablas() {
       activo boolean NOT NULL DEFAULT true,
       creado timestamptz NOT NULL DEFAULT now()
     )`,
+    // Seguridad de las claves (2026-10-24):
+    // - cambiar_clave: la clave es provisoria y hay que cambiarla al entrar. Arranca en true para todos (los
+    //   usuarios iniciales tenían 1234) y vuelve a true cuando un administrador da una clave provisoria.
+    // - intentos_fallidos y bloqueado_hasta: después de varios intentos con la clave equivocada, se bloquea un rato.
+    sql`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS cambiar_clave boolean NOT NULL DEFAULT true`,
+    sql`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS intentos_fallidos integer NOT NULL DEFAULT 0`,
+    sql`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS bloqueado_hasta timestamptz`,
+    sql`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS ultimo_ingreso timestamptz`,
     // Una sesión por dispositivo donde alguien inició sesión: el navegador guarda el "token" en una cookie.
     sql`CREATE TABLE IF NOT EXISTS sesiones (
       token text PRIMARY KEY,
@@ -443,11 +451,37 @@ export async function leerNombresUsuarios(): Promise<string[]> {
   return filas.map(f => String(f.nombre));
 }
 
+/** Después de esta cantidad de claves equivocadas seguidas, el usuario queda bloqueado un rato. */
+export const INTENTOS_PERMITIDOS = 5;
+export const MINUTOS_DE_BLOQUEO = 15;
+
+export interface UsuarioParaIngresar extends Usuario {
+  clave: string;
+  /** Minutos que faltan para que se desbloquee (0 si no está bloqueado). */
+  minutosBloqueado: number;
+}
+
 /** El usuario con ese nombre y su clave encriptada (para revisarla), o null si no existe o no está activo. */
-export async function buscarUsuario(nombre: string): Promise<(Usuario & { clave: string }) | null> {
+export async function buscarUsuario(nombre: string): Promise<UsuarioParaIngresar | null> {
   await prepararBase();
-  const [fila] = await conexion()`SELECT id, nombre, rol, clave FROM usuarios WHERE nombre = ${nombre} AND activo`;
-  return (fila as (Usuario & { clave: string }) | undefined) ?? null;
+  const [fila] = await conexion()`
+    SELECT id, nombre, rol, clave, cambiar_clave AS "cambiarClave",
+           coalesce(ceil(extract(epoch FROM bloqueado_hasta - now()) / 60), 0)::int AS "minutosBloqueado"
+    FROM usuarios WHERE nombre = ${nombre} AND activo`;
+  if (!fila) return null;
+  const u = fila as UsuarioParaIngresar;
+  return { ...u, minutosBloqueado: Math.max(0, u.minutosBloqueado) };
+}
+
+/** Anota una clave equivocada; al llegar a INTENTOS_PERMITIDOS, bloquea al usuario MINUTOS_DE_BLOQUEO minutos. */
+export async function anotarIntentoFallido(usuarioId: number): Promise<void> {
+  await prepararBase();
+  await conexion()`
+    UPDATE usuarios SET
+      bloqueado_hasta = CASE WHEN intentos_fallidos + 1 >= ${INTENTOS_PERMITIDOS}
+                             THEN now() + make_interval(mins => ${MINUTOS_DE_BLOQUEO}) ELSE bloqueado_hasta END,
+      intentos_fallidos = CASE WHEN intentos_fallidos + 1 >= ${INTENTOS_PERMITIDOS} THEN 0 ELSE intentos_fallidos + 1 END
+    WHERE id = ${usuarioId}`;
 }
 
 /** Abre una sesión para el usuario y devuelve su "token" (un código al azar, imposible de adivinar). */
@@ -460,6 +494,9 @@ export async function crearSesion(usuarioId: number): Promise<string> {
     sql`DELETE FROM sesiones WHERE vence < now()`,
     sql`INSERT INTO sesiones (token, usuario_id, vence)
         VALUES (${token}, ${usuarioId}, now() + make_interval(days => ${DIAS_DE_SESION}))`,
+    // Entró bien: se borran los intentos fallidos y se anota cuándo entró.
+    sql`UPDATE usuarios SET intentos_fallidos = 0, bloqueado_hasta = NULL, ultimo_ingreso = now()
+        WHERE id = ${usuarioId}`,
   ]);
   return token;
 }
@@ -468,7 +505,8 @@ export async function crearSesion(usuarioId: number): Promise<string> {
 export async function usuarioDeSesion(token: string): Promise<Usuario | null> {
   await prepararBase();
   const [fila] = await conexion()`
-    SELECT u.id, u.nombre, u.rol FROM sesiones s JOIN usuarios u ON u.id = s.usuario_id
+    SELECT u.id, u.nombre, u.rol, u.cambiar_clave AS "cambiarClave"
+    FROM sesiones s JOIN usuarios u ON u.id = s.usuario_id
     WHERE s.token = ${token} AND s.vence > now() AND u.activo`;
   return (fila as Usuario | undefined) ?? null;
 }
@@ -476,4 +514,76 @@ export async function usuarioDeSesion(token: string): Promise<Usuario | null> {
 export async function borrarSesion(token: string): Promise<void> {
   await prepararBase();
   await conexion()`DELETE FROM sesiones WHERE token = ${token}`;
+}
+
+/** La clave encriptada de un usuario (para revisar la actual antes de cambiarla). */
+export async function leerClave(usuarioId: number): Promise<string | null> {
+  await prepararBase();
+  const [fila] = await conexion()`SELECT clave FROM usuarios WHERE id = ${usuarioId}`;
+  return fila ? String(fila.clave) : null;
+}
+
+/**
+ * Guarda una clave nueva (ya encriptada). "provisoria" = la dio un administrador y hay que cambiarla al entrar.
+ * Cierra las sesiones del usuario en los demás dispositivos (menos la de "salvoSesion", si se indica).
+ */
+export async function guardarClave(
+  usuarioId: number,
+  clave: string,
+  provisoria: boolean,
+  salvoSesion = '',
+): Promise<void> {
+  await prepararBase();
+  const sql = conexion();
+  await sql.transaction([
+    sql`UPDATE usuarios SET clave = ${clave}, cambiar_clave = ${provisoria}, intentos_fallidos = 0,
+          bloqueado_hasta = NULL
+        WHERE id = ${usuarioId}`,
+    sql`DELETE FROM sesiones WHERE usuario_id = ${usuarioId} AND token <> ${salvoSesion}`,
+  ]);
+}
+
+// ---------- Administración de usuarios (solo administradores) ----------
+
+export interface UsuarioListado extends Usuario {
+  activo: boolean;
+  /** "dd/mm/aaaa hh:mm" (hora de Argentina) o null si nunca entró. */
+  ultimoIngreso: string | null;
+  bloqueado: boolean;
+}
+
+export async function leerUsuarios(): Promise<UsuarioListado[]> {
+  await prepararBase();
+  const filas = await conexion()`
+    SELECT id, nombre, rol, activo, cambiar_clave AS "cambiarClave",
+           to_char(ultimo_ingreso AT TIME ZONE 'America/Argentina/Buenos_Aires', 'DD/MM/YYYY HH24:MI') AS "ultimoIngreso",
+           coalesce(bloqueado_hasta > now(), false) AS bloqueado
+    FROM usuarios ORDER BY activo DESC, nombre`;
+  return filas as UsuarioListado[];
+}
+
+/** Agrega un usuario con una clave provisoria (ya encriptada). Devuelve false si ya hay uno con ese nombre. */
+export async function crearUsuario(nombre: string, rol: Rol, clave: string): Promise<boolean> {
+  await prepararBase();
+  const filas = await conexion()`
+    INSERT INTO usuarios (nombre, clave, rol, cambiar_clave)
+    SELECT ${nombre}, ${clave}, ${rol}, true
+    WHERE NOT EXISTS (SELECT 1 FROM usuarios WHERE lower(nombre) = lower(${nombre}))
+    RETURNING id`;
+  return filas.length === 1;
+}
+
+export async function cambiarRol(usuarioId: number, rol: Rol): Promise<void> {
+  await prepararBase();
+  await conexion()`UPDATE usuarios SET rol = ${rol} WHERE id = ${usuarioId}`;
+}
+
+/** Da de baja (o vuelve a dar de alta) a un usuario. Al darlo de baja, se cierran todas sus sesiones. */
+export async function cambiarActivo(usuarioId: number, activo: boolean): Promise<void> {
+  await prepararBase();
+  const sql = conexion();
+  await sql.transaction([
+    sql`UPDATE usuarios SET activo = ${activo} WHERE id = ${usuarioId}`,
+    sql`DELETE FROM sesiones WHERE usuario_id = ${usuarioId} AND NOT ${activo}`,
+  ]);
 }

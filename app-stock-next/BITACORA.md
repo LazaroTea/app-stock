@@ -439,3 +439,48 @@ las sesiones de prueba se borraron (el próximo remito sigue siendo el 000002). 
 - [ ] Subir estos cambios a GitHub y confirmar que Vercel la publica sin error. **Ojo:** la base ya tiene las
       tablas nuevas; conviene subir pronto.
 - [ ] Cambiar la contraseña de la base en Neon (quedó escrita en el chat) y actualizar `.env.local`.
+
+## 2026-10-24: seguridad de las claves y pantalla Usuarios
+
+**Pedido:** avanzar con los pendientes: criterios de seguridad de las claves, manejar los usuarios desde la app
+y cambiar la contraseña de la base en Neon.
+
+**Decisiones**
+- **Clave provisoria obligatoria de cambiar:** todos tenían 1234, así que al entrar por primera vez la app pide
+  elegir una clave propia y no deja hacer nada más hasta cambiarla (tampoco desde el servidor).
+- **Reglas:** al menos 8 letras o números; no puede tener el nombre de la persona (cada palabra del nombre, sin
+  acentos), ser una clave muy común ni el mismo carácter repetido. Se eligió 8 como equilibrio entre seguridad y
+  que sea fácil de escribir en el celu. Todo está en `lib/claves.ts`.
+- **Bloqueo:** 5 intentos equivocados seguidos bloquean al usuario 15 minutos (evita que alguien pruebe claves
+  hasta acertar). Un administrador lo desbloquea dándole una clave provisoria.
+- **Al cambiar la clave** se cierran las sesiones en los demás dispositivos (por si alguien la sabía).
+- **Pantalla Usuarios** (solo administradores): agregar (la app genera una clave provisoria de 6 números y la
+  muestra una sola vez), clave provisoria nueva, cambiar rol, dar de baja y de alta. Nadie puede cambiarse el rol
+  ni darse de baja a sí mismo, así siempre queda un administrador. Dar de baja no borra: los remitos siguen a su
+  nombre.
+- **Contraseña de Neon:** cambiarla es una tarea de seguridad de la cuenta, así que la hace el usuario (Claude no
+  maneja contraseñas). Quedó una guía paso a paso en el README ("Cambiar la contraseña de la base").
+- En la compu de 1024 px, con la pestaña Usuarios no entraba todo el encabezado: el lema ahora se ve desde 1280 px.
+
+**Qué se hizo**
+- Base: en `usuarios`, columnas `cambiar_clave` (arranca en true para todos), `intentos_fallidos`,
+  `bloqueado_hasta` y `ultimo_ingreso`.
+- Pantallas nuevas: **Mi clave** (`/clave`, tocando el nombre arriba a la derecha) y **Usuarios** (`/usuarios`).
+- Ingreso: bloqueo por intentos y, con clave provisoria, va directo a elegir la clave.
+
+**Probado** contra la base real, con usuarios de prueba (no se tocaron las claves de las personas): con clave
+provisoria lleva a "Elegí tu clave" y no deja ir a otra pantalla; rechaza 12345678, claves distintas al
+repetirlas y claves con el nombre; agregar usuario (muestra la clave provisoria), nombre repetido rechazado,
+cambio de rol, dar de baja (desaparece de la lista de ingreso); 5 claves equivocadas bloquean incluso con la
+clave correcta, y una clave provisoria nueva lo desbloquea; un colaborador no ve la pestaña Usuarios y `/usuarios`
+lo devuelve al inicio. Celu sin desbordes. Los usuarios de prueba se borraron. Compila sin errores.
+
+**Error encontrado y corregido:** "pruebanuevo99" se aceptaba para el usuario "PRUEBA Nuevo" (el nombre tenía un
+espacio y la clave no). Ahora se revisa cada palabra del nombre.
+
+**Pendiente**
+- [ ] **Cambiar la contraseña de la base en Neon** (la hace el usuario, con la guía del README) y avisar para
+      probar la conexión.
+- [ ] Subir estos cambios a GitHub. Al publicarse, cada persona entra con 1234 y elige su clave.
+- [ ] Más adelante: revisar si se vuelve a limitar por stock (el usuario lo quiere probar después).
+- [ ] Listado de especies: por ahora está bien; quizás se retome.

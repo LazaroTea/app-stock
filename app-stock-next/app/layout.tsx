@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Montserrat, Raleway } from 'next/font/google';
+import Link from 'next/link';
+import { puedeAdministrarUsuarios } from '@/lib/permisos';
 import { usuarioActual } from '@/lib/sesion';
 import Navegacion from './Navegacion';
 import { cerrarSesion } from './sesion';
@@ -30,14 +32,16 @@ export default async function Layout({ children }: { children: React.ReactNode }
               <span className="titulo-app">Stock</span>
             </div>
             {/* En el celu la navegación va abajo (ver globals.css); en pantallas grandes, acá arriba. */}
-            {usuario && <Navegacion />}
+            {/* Con clave provisoria no hay pestañas: primero tiene que cambiarla. */}
+            {usuario && !usuario.cambiarClave && <Navegacion usuarios={puedeAdministrarUsuarios(usuario)} />}
             <span className="lema">Movemos naturaleza. Creamos paisaje</span>
             {usuario && (
               <form action={cerrarSesion} className="usuario">
-                <span className="usuario-nombre">
+                {/* Tocando el nombre se cambia la clave propia. */}
+                <Link href="/clave" className="usuario-nombre" title="Cambiar mi clave">
                   {usuario.nombre}
-                  <small>{usuario.rol}</small>
-                </span>
+                  <small>{usuario.rol} · Mi clave</small>
+                </Link>
                 <button type="submit" className="salir">Salir</button>
               </form>
             )}
