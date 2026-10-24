@@ -54,6 +54,21 @@ export interface LineaRemito {
   cantidad: number;
 }
 
+/**
+ * Roles (ver lib/permisos.ts):
+ * - Administrador: puede todo, incluso modificar y anular remitos.
+ * - Colaborador: puede cargar movimientos y ajustes (y ver el stock), pero no modificar ni anular.
+ */
+export const ROLES = ['Administrador', 'Colaborador'] as const;
+export type Rol = (typeof ROLES)[number];
+
+/** La persona que inició sesión. */
+export interface Usuario {
+  id: number;
+  nombre: string;
+  rol: Rol;
+}
+
 /** { código de especie: { "presentación · tamaño": cantidad } } (ver claveStock en lib/stock.ts) */
 export type Stock = Record<string, Record<string, number>>;
 

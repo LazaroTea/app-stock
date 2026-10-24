@@ -9,10 +9,31 @@
 // movimientos (tabla "movimientos"), cada uno con el depósito donde suma o resta. El stock de un depósito es
 // la suma de sus movimientos. Ver efectos() en lib/stock.ts.
 import 'server-only';
+import { randomBytes } from 'crypto';
 import { neon } from '@neondatabase/serverless';
+import { encriptarClave } from './claves';
 import { ESPECIES } from './especies';
 import { claveStock, efectos, etiquetaTamano, TAMANO_A_ESPECIFICAR } from './stock';
-import type { Especie, LineaRemito, Movimiento, StockPorDeposito, TipoMovimiento } from './tipos';
+import type { Especie, LineaRemito, Movimiento, Rol, StockPorDeposito, TipoMovimiento, Usuario } from './tipos';
+
+/**
+ * Usuarios iniciales (2026-10-24). Todos arrancan con la clave "1234": es provisoria, mientras se definen los
+ * criterios de seguridad. Se cargan solo si la tabla de usuarios está vacía; después se cambian en la base.
+ */
+const USUARIOS_INICIALES: { nombre: string; rol: Rol }[] = [
+  { nombre: 'Gustavo', rol: 'Administrador' },
+  { nombre: 'Rocío', rol: 'Administrador' },
+  { nombre: 'Ezequiel', rol: 'Colaborador' },
+  { nombre: 'Martin', rol: 'Colaborador' },
+  { nombre: 'Estela', rol: 'Colaborador' },
+  { nombre: 'Martina', rol: 'Colaborador' },
+  { nombre: 'Sebastián', rol: 'Colaborador' },
+  { nombre: 'María', rol: 'Colaborador' },
+];
+const CLAVE_INICIAL = '1234';
+
+/** Cuánto dura una sesión iniciada en un dispositivo. */
+export const DIAS_DE_SESION = 30;
 
 /** Cómo se entregan las plantas, en el orden en que se muestran. La primera es la que viene elegida al cargar. */
 export const PRESENTACIONES = ['Envasado', 'Maceta', 'Raíz desnuda'];
@@ -125,6 +146,25 @@ async function crearTablas() {
     sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS anulado_motivo text NOT NULL DEFAULT ''`,
     sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS anulado_en timestamptz`,
     sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS modificado_en timestamptz`,
+    // Quién modificó o anuló (nombre del usuario), desde que hay usuarios.
+    sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS modificado_por text NOT NULL DEFAULT ''`,
+    sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS anulado_por text NOT NULL DEFAULT ''`,
+    // Usuarios y sesiones (2026-10-24). La clave se guarda encriptada (ver lib/claves.ts).
+    sql`CREATE TABLE IF NOT EXISTS usuarios (
+      id serial PRIMARY KEY,
+      nombre text NOT NULL UNIQUE,
+      clave text NOT NULL,
+      rol text NOT NULL CHECK (rol IN ('Administrador', 'Colaborador')),
+      activo boolean NOT NULL DEFAULT true,
+      creado timestamptz NOT NULL DEFAULT now()
+    )`,
+    // Una sesión por dispositivo donde alguien inició sesión: el navegador guarda el "token" en una cookie.
+    sql`CREATE TABLE IF NOT EXISTS sesiones (
+      token text PRIMARY KEY,
+      usuario_id integer NOT NULL REFERENCES usuarios (id),
+      creada timestamptz NOT NULL DEFAULT now(),
+      vence timestamptz NOT NULL
+    )`,
     // Cada línea del remito genera uno o dos movimientos: lo que suma (+) o resta (-) en un depósito.
     // "linea" es el número de línea dentro del remito (en un pase, los dos movimientos tienen la misma).
     sql`CREATE TABLE IF NOT EXISTS movimientos (
@@ -149,6 +189,15 @@ async function crearTablas() {
       SELECT * FROM json_to_recordset(${JSON.stringify(tamanos)}::json) AS x (nombre text, orden integer)
       WHERE NOT EXISTS (SELECT 1 FROM tamanos)`,
   ]);
+  // Usuarios iniciales: aparte, porque encriptar las claves tarda un poco y solo hace falta la primera vez.
+  // "ON CONFLICT" evita repetirlos si dos pedidos llegan juntos.
+  const [{ hay }] = await sql`SELECT EXISTS (SELECT 1 FROM usuarios) AS hay`;
+  if (!hay) {
+    const usuarios = USUARIOS_INICIALES.map(u => ({ nombre: u.nombre, clave: encriptarClave(CLAVE_INICIAL), rol: u.rol }));
+    await sql`INSERT INTO usuarios (nombre, clave, rol)
+      SELECT * FROM json_to_recordset(${JSON.stringify(usuarios)}::json) AS x (nombre text, clave text, rol text)
+      ON CONFLICT (nombre) DO NOTHING`;
+  }
 }
 
 export interface Catalogo {
@@ -264,6 +313,9 @@ export interface RemitoGuardado {
   /** Cuándo se anuló o se modificó por última vez ("dd/mm/aaaa hh:mm", hora de Argentina), o null. */
   anuladoEn: string | null;
   modificadoEn: string | null;
+  /** Quién anuló o modificó por última vez (vacío si nadie, o si fue antes de que hubiera usuarios). */
+  anuladoPor: string;
+  modificadoPor: string;
   lineas: (LineaRemito & { comun: string; cientifico: string })[];
 }
 
@@ -276,7 +328,8 @@ export async function leerRemito(numero: number): Promise<RemitoGuardado | null>
           procedencia, procedencia_detalle AS "procedenciaDetalle", destino, destino_detalle AS "destinoDetalle",
           anulado, anulado_motivo AS "anuladoMotivo",
           to_char(anulado_en AT TIME ZONE 'America/Argentina/Buenos_Aires', 'DD/MM/YYYY HH24:MI') AS "anuladoEn",
-          to_char(modificado_en AT TIME ZONE 'America/Argentina/Buenos_Aires', 'DD/MM/YYYY HH24:MI') AS "modificadoEn"
+          to_char(modificado_en AT TIME ZONE 'America/Argentina/Buenos_Aires', 'DD/MM/YYYY HH24:MI') AS "modificadoEn",
+          anulado_por AS "anuladoPor", modificado_por AS "modificadoPor"
         FROM remitos WHERE id = ${numero}`,
     // Una fila por línea (en un pase hay dos movimientos por línea). La cantidad va sin signo,
     // salvo en los ajustes.
@@ -339,13 +392,14 @@ function movimientosDe(r: RemitoNuevo): string {
 
 /**
  * Reemplaza los datos y las líneas de un remito ya guardado (mismo número), en una sola operación.
+ * El responsable no cambia (es quien lo emitió); queda anotado quién lo modificó (r.responsable).
  * Devuelve false si el remito no existe o está anulado (un remito anulado no se modifica).
  */
 export async function modificarRemito(numero: number, r: RemitoNuevo): Promise<boolean> {
   await prepararBase();
   const [resultado] = await conexion().query(
     `WITH remito AS (
-       UPDATE remitos SET fecha = $2, tipo = $3, responsable = $4, observaciones = $5, destinatario = $6,
+       UPDATE remitos SET fecha = $2, tipo = $3, modificado_por = $4, observaciones = $5, destinatario = $6,
               procedencia = $7, procedencia_detalle = $8, destino = $9, destino_detalle = $10, modificado_en = now()
        WHERE id = $11 AND NOT anulado
        RETURNING id
@@ -372,10 +426,54 @@ export async function modificarRemito(numero: number, r: RemitoNuevo): Promise<b
  * Anula un remito: queda guardado con su número, pero sus movimientos dejan de contar en el stock.
  * Devuelve false si no existe o ya estaba anulado.
  */
-export async function anularRemito(numero: number, motivo: string): Promise<boolean> {
+export async function anularRemito(numero: number, motivo: string, quien: string): Promise<boolean> {
   await prepararBase();
   const filas = await conexion()`
-    UPDATE remitos SET anulado = true, anulado_motivo = ${motivo}, anulado_en = now()
+    UPDATE remitos SET anulado = true, anulado_motivo = ${motivo}, anulado_en = now(), anulado_por = ${quien}
     WHERE id = ${numero} AND NOT anulado RETURNING id`;
   return filas.length === 1;
+}
+
+// ---------- Usuarios y sesiones ----------
+
+/** Los nombres de quienes pueden iniciar sesión, para elegir en la pantalla de ingreso. */
+export async function leerNombresUsuarios(): Promise<string[]> {
+  await prepararBase();
+  const filas = await conexion()`SELECT nombre FROM usuarios WHERE activo ORDER BY nombre`;
+  return filas.map(f => String(f.nombre));
+}
+
+/** El usuario con ese nombre y su clave encriptada (para revisarla), o null si no existe o no está activo. */
+export async function buscarUsuario(nombre: string): Promise<(Usuario & { clave: string }) | null> {
+  await prepararBase();
+  const [fila] = await conexion()`SELECT id, nombre, rol, clave FROM usuarios WHERE nombre = ${nombre} AND activo`;
+  return (fila as (Usuario & { clave: string }) | undefined) ?? null;
+}
+
+/** Abre una sesión para el usuario y devuelve su "token" (un código al azar, imposible de adivinar). */
+export async function crearSesion(usuarioId: number): Promise<string> {
+  await prepararBase();
+  const token = randomBytes(32).toString('hex');
+  const sql = conexion();
+  await sql.transaction([
+    // De paso, se borran las sesiones vencidas.
+    sql`DELETE FROM sesiones WHERE vence < now()`,
+    sql`INSERT INTO sesiones (token, usuario_id, vence)
+        VALUES (${token}, ${usuarioId}, now() + make_interval(days => ${DIAS_DE_SESION}))`,
+  ]);
+  return token;
+}
+
+/** El usuario de una sesión abierta (no vencida y de un usuario activo), o null. */
+export async function usuarioDeSesion(token: string): Promise<Usuario | null> {
+  await prepararBase();
+  const [fila] = await conexion()`
+    SELECT u.id, u.nombre, u.rol FROM sesiones s JOIN usuarios u ON u.id = s.usuario_id
+    WHERE s.token = ${token} AND s.vence > now() AND u.activo`;
+  return (fila as Usuario | undefined) ?? null;
+}
+
+export async function borrarSesion(token: string): Promise<void> {
+  await prepararBase();
+  await conexion()`DELETE FROM sesiones WHERE token = ${token}`;
 }

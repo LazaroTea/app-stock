@@ -56,6 +56,24 @@ header { background: var(--verde); color: var(--crema); }
 }
 .lema { display: none; }
 
+/* Quién inició sesión (nombre y rol) y el botón Salir, a la derecha del encabezado. */
+.usuario { display: flex; align-items: center; gap: 10px; }
+.usuario-nombre {
+  display: flex; flex-direction: column; align-items: flex-end; line-height: 1.15;
+  font-family: var(--fuente-titulos), sans-serif; font-weight: 600; font-size: .85rem;
+}
+.usuario-nombre small { font-weight: 500; font-size: .68rem; letter-spacing: .06em; opacity: .8; }
+button.salir {
+  min-height: 36px; padding: 6px 12px; border: 1px solid rgba(249, 241, 217, .6); border-radius: 8px;
+  background: none; color: var(--crema); font-size: .72rem; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; cursor: pointer;
+}
+button.salir:hover { background: rgba(249, 241, 217, .12); }
+
+/* Pantalla de ingreso. */
+.ingreso { max-width: 380px; margin: 24px auto; padding: 20px; }
+.ingreso h2 { margin-top: 0; }
+
 /* Celu: barra fija abajo, fácil de alcanzar con el pulgar. */
 nav {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
@@ -75,6 +93,8 @@ input, select, textarea {
   width: 100%; min-height: 44px; padding: 10px; font-size: 1rem; font-family: inherit;
   border: 1px solid var(--borde); border-radius: 8px; background: var(--blanco); color: inherit;
 }
+/* Campo que no se puede cambiar (el responsable sale del usuario que inició sesión). */
+input[readonly] { background: var(--salvia-claro); color: var(--verde-oscuro); }
 input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, nav a:focus-visible {
   outline: 3px solid rgba(100, 105, 69, .35); outline-offset: 1px;
 }

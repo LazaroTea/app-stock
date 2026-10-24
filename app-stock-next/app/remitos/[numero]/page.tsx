@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { leerRemito } from '@/lib/almacen';
 import { EMPRESA } from '@/lib/empresa';
 import { puedeAnularRemitos, puedeModificarRemitos } from '@/lib/permisos';
+import { exigirUsuario } from '@/lib/sesion';
 import { etiquetaLugar, etiquetaTamano, fechaLegible, lugaresDelTipo, numeroRemito } from '@/lib/stock';
 import AnularRemito from './AnularRemito';
 import BotonImprimir from './BotonImprimir';
@@ -20,6 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PaginaRemito({ params }: Props) {
+  const usuario = await exigirUsuario();
   const numero = Number((await params).numero);
   const remito = Number.isInteger(numero) && numero > 0 ? await leerRemito(numero) : null;
   if (!remito) notFound();
@@ -28,9 +30,9 @@ export default async function PaginaRemito({ params }: Props) {
   // Los títulos dependen del tipo: "Procedencia" / "Depósito de destino" en una entrada, etc.
   const reglas = lugaresDelTipo(remito.tipo);
 
-  // Modificar y anular: por ahora todos pueden (ver lib/permisos.ts); un remito anulado ya no se toca.
-  const puedeModificar = !remito.anulado && puedeModificarRemitos();
-  const puedeAnular = !remito.anulado && puedeAnularRemitos();
+  // Modificar y anular: solo administradores (ver lib/permisos.ts); un remito anulado ya no se toca.
+  const puedeModificar = !remito.anulado && puedeModificarRemitos(usuario);
+  const puedeAnular = !remito.anulado && puedeAnularRemitos(usuario);
 
   return (
     <>
@@ -48,14 +50,16 @@ export default async function PaginaRemito({ params }: Props) {
       </div>
       <p className="ayuda no-imprimir">
         Para descargarlo, elegí <b>Guardar como PDF</b> en la ventana de impresión.
-        {remito.modificadoEn && ` Modificado por última vez el ${remito.modificadoEn}.`}
+        {remito.modificadoEn &&
+          ` Modificado por última vez el ${remito.modificadoEn}${remito.modificadoPor ? ` por ${remito.modificadoPor}` : ""}.`}
       </p>
 
       <article className={remito.anulado ? 'documento anulado' : 'documento'}>
         {remito.anulado && (
           <div className="documento-anulado">
             <b>Remito anulado</b>
-            {remito.anuladoEn && ` el ${remito.anuladoEn}`}. Sus plantas no cuentan en el stock.
+            {remito.anuladoEn && ` el ${remito.anuladoEn}`}
+            {remito.anuladoPor && ` por ${remito.anuladoPor}`}. Sus plantas no cuentan en el stock.
             {remito.anuladoMotivo && (
               <div>
                 <span>Motivo:</span> {remito.anuladoMotivo}

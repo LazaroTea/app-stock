@@ -43,6 +43,8 @@ interface Props {
   /** El remito que se está modificando (si no hay, es un remito nuevo). */
   editando?: RemitoGuardado;
   hoy: string;
+  /** Nombre de quien inició sesión. */
+  usuario: string;
 }
 
 // Saca los espacios de más para que "5 m" y "5  m " sumen al mismo stock.
@@ -50,7 +52,7 @@ const limpiar = (texto: string) => texto.trim().replace(/\s+/g, ' ');
 
 const claveLinea = (l: LineaRemito) => claveStock(l.presentacion, etiquetaTamano(l.tamano, l.tamanoDetalle));
 
-export default function Formulario({ especies, presentaciones, tamanos, stock, sugerencias, editando, hoy }: Props) {
+export default function Formulario({ especies, presentaciones, tamanos, stock, sugerencias, editando, hoy, usuario }: Props) {
   const router = useRouter();
   const [resultado, enviar, guardando] = useActionState(
     editando ? modificarRemito.bind(null, editando.numero) : registrarRemito,
@@ -67,7 +69,8 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
   const [procedenciaDetalle, setProcedenciaDetalle] = useState(editando?.procedenciaDetalle ?? '');
   const [destino, setDestino] = useState(editando?.destino ?? '');
   const [destinoDetalle, setDestinoDetalle] = useState(editando?.destinoDetalle ?? '');
-  const [responsable, setResponsable] = useState(editando?.responsable ?? '');
+  // Quien inició sesión; al modificar, el responsable original (quien modifica queda anotado aparte).
+  const responsable = editando?.responsable || usuario;
   const [observaciones, setObservaciones] = useState(editando?.observaciones ?? '');
   const [lineas, setLineas] = useState<LineaRemito[]>(
     editando?.lineas.map(({ codigo, presentacion, tamano, tamanoDetalle, cantidad }) => ({
@@ -92,12 +95,11 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
   const nombre = new Map(especies.map(e => [e.codigo, e.comun]));
   const reglas = lugaresDelTipo(tipo);
 
-  // Al abrir: el responsable recordado y el remito a medio armar, si había.
+  // Al abrir: el remito a medio armar, si había.
   // Al modificar un remito no: se usan sus datos y no se toca el borrador.
   useEffect(() => {
     if (editando) return;
     try {
-      setResponsable(localStorage.getItem('responsable') ?? '');
       const borrador = JSON.parse(localStorage.getItem(BORRADOR) ?? 'null');
       if (Array.isArray(borrador?.lineas) && borrador.lineas.length) {
         setLineas(borrador.lineas);
@@ -216,9 +218,6 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
   }
 
   function guardar() {
-    try {
-      localStorage.setItem('responsable', responsable);
-    } catch {}
     startTransition(() =>
       enviar({
         tipo,
@@ -228,7 +227,6 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
         procedenciaDetalle,
         destino,
         destinoDetalle,
-        responsable,
         observaciones,
         lineas,
       }),
@@ -331,12 +329,7 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
           </div>
           <div>
             <label htmlFor="responsable">Responsable</label>
-            <input
-              id="responsable"
-              placeholder="Quién lo carga"
-              value={responsable}
-              onChange={e => setResponsable(e.target.value)}
-            />
+            <input id="responsable" value={responsable} readOnly />
           </div>
         </div>
 

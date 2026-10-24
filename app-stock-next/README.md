@@ -69,6 +69,16 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 
 ## Cómo se usa
 
+- **Ingresar:** al abrir la app se elige el **nombre** y se escribe la **clave**. La sesión queda abierta 30
+  días en ese dispositivo (celu o compu). Arriba a la derecha se ve quién ingresó, su rol y el botón **Salir**.
+
+  | Usuario | Rol | Qué puede hacer |
+  |---|---|---|
+  | Gustavo, Rocío | **Administrador** | Todo, también modificar y anular remitos. |
+  | Ezequiel, Martin, Estela, Martina, Sebastián, María | **Colaborador** | Cargar movimientos y ajustes, ver el stock y Últimos, e imprimir remitos. No puede modificar ni anular. |
+
+  Por ahora **todos tienen la clave 1234** (provisoria, hasta que se definan los criterios de seguridad).
+  Las claves se guardan encriptadas: ni mirando la base se puede leer cuál es.
 - **Stock:** arriba se elige qué ver: **Todos** (los tres depósitos sumados) o un depósito. Cada especie
   muestra su total y el detalle por presentación y tamaño (ej. "Raíz desnuda · 12-14: 7"); con "Todos",
   también cuánto hay en cada depósito ("Pilar: −2 · Goya: 6"). Los números en negativo salen en rojo.
@@ -77,7 +87,8 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
   **todas**, y se puede ver **solo árboles**, **solo palmeras** o **solo frutales**. Al buscar por nombre
   aparecen también las que no tienen stock.
 - **Cargar** (en formato **remito**):
-  1. **Datos del remito:** tipo (**Movimiento** o **Ajuste**), los lugares, fecha, responsable,
+  1. **Datos del remito:** tipo (**Movimiento** o **Ajuste**), los lugares, fecha, responsable (sale solo: es quien
+     ingresó, y no se puede cambiar),
      **destinatario** (opcional: persona o contacto que recibe) y observaciones.
 
      | Tipo | Punto de partida | Punto de llegada | Qué hace con el stock |
@@ -115,12 +126,13 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
   remito fiscal.
 - **Modificar un remito:** en la página del remito, el botón **Modificar** abre Cargar con todos sus datos y
   líneas (con el aviso "Estás modificando el remito N.º…"). Al tocar **Guardar cambios** se reemplazan sus
-  datos y líneas, el stock se recalcula y el número no cambia. Queda anotado cuándo se modificó por última vez.
+  datos y líneas, el stock se recalcula y el número no cambia. El responsable sigue siendo quien lo emitió;
+  queda anotado cuándo y quién lo modificó por última vez.
 - **Anular un remito:** en la página del remito, el botón **Anular** pide el motivo y confirma. El remito no se
-  borra: queda con su número, el motivo, la fecha y la marca **ANULADO** (también al imprimir), y sus plantas
+  borra: queda con su número, el motivo, la fecha, quién lo anuló y la marca **ANULADO** (también al imprimir), y sus plantas
   dejan de contar en el stock. Un remito anulado ya no se puede modificar, y no se puede "desanular" desde la app.
-- **Quién puede modificar o anular:** por ahora todos. Cuando haya usuarios, se va a restringir en
-  `lib/permisos.ts` (la pantalla oculta los botones y el servidor rechaza el pedido).
+- **Quién puede modificar o anular:** solo los administradores. Se decide en `lib/permisos.ts` (la pantalla
+  oculta los botones y el servidor rechaza el pedido aunque alguien lo intente igual).
 - **Últimos:** los últimos 30 movimientos: cada fila es lo que suma (+) o resta (−) en un depósito, con su
   número de remito (un movimiento entre dos depósitos aparece dos veces, una por depósito). Tocando el número
   se abre el remito, para verlo, imprimirlo, modificarlo o anularlo. Los de remitos anulados se ven tachados.
@@ -138,7 +150,10 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 | `app/page.tsx` + `app/ListaStock.tsx` | Pantalla **Stock**: total por especie, presentación y tamaño, buscador y filtros. |
 | `app/cargar/` | Pantalla **Cargar**: el remito (datos, sumar plantas y guardar). |
 | `app/remitos/[numero]/` | Un remito guardado: imprimir o guardar como PDF, modificar y anular. |
-| `lib/permisos.ts` | Quién puede modificar y anular remitos (por ahora, todos). |
+| `lib/permisos.ts` | Qué puede hacer cada rol (modificar y anular: solo administradores). |
+| `app/login/`, `app/sesion.ts` | Pantalla de ingreso, y lo que pasa en el servidor al ingresar y al salir. |
+| `lib/sesion.ts` | Averigua quién ingresó (cookie "sesion"); si nadie, lleva a la pantalla de ingreso. |
+| `lib/claves.ts` | Encripta las claves y las revisa al ingresar. |
 | `lib/empresa.ts` | Los datos de Native que salen en el remito impreso. |
 | `app/not-found.tsx` | Lo que se ve si se entra a algo que no existe. |
 | `app/ultimos/page.tsx` | Pantalla **Últimos**: los últimos 30 movimientos. |
@@ -155,7 +170,7 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 
 ## Los datos (base Neon)
 
-Hay cinco tablas:
+Hay siete tablas:
 
 - **especies**: código, nombre común, nombre científico, región (o "Exótica"), grupo (Árbol, Palmera o
   Frutal), stock mínimo.
@@ -164,16 +179,24 @@ Hay cinco tablas:
 - **remitos**: número (`id`), fecha, tipo (Movimiento o Ajuste), punto de partida (`procedencia`) y de llegada
   (`destino`), con `procedencia_detalle` y `destino_detalle` para el nombre del proveedor o cliente (en los
   ajustes, el depósito va en `destino`), destinatario, responsable y observaciones, y si está anulado
-  (`anulado`, `anulado_motivo`, `anulado_en`) o cuándo se modificó (`modificado_en`).
+  (`anulado`, `anulado_motivo`, `anulado_en`, `anulado_por`) o cuándo y quién lo modificó (`modificado_en`,
+  `modificado_por`).
 - **movimientos**: lo que cada línea de remito suma (+) o resta (−) en un **depósito** (`deposito`), con su
   especie, presentación, tamaño (y en `tamano_detalle`, lo escrito a mano con "Especificar"), el número de
   remito (`remito_id`) y el número de línea (`linea`). Un movimiento entre dos depósitos genera dos filas por
   línea: −N en el de partida y +N en el de llegada.
 
+- **usuarios**: nombre, clave (encriptada), rol (Administrador o Colaborador) y si está activo (`activo`).
+- **sesiones**: un código al azar por cada dispositivo donde alguien ingresó, de qué usuario es y cuándo vence.
+
 El stock no se guarda: la base lo calcula sumando los movimientos de cada depósito.
 
 - La primera vez que se abre la app, crea las tablas y carga especies, presentaciones y tamaños. Solo lo hace
   si están **vacías**: nunca pisa datos que ya existen.
+- Los 8 usuarios iniciales se cargan solo si la tabla `usuarios` está vacía. Para **sacarle el acceso** a
+  alguien, en el panel de Neon se pone `activo` en `false` en su fila (sus sesiones dejan de valer al
+  instante). Para **cambiar un rol**, se cambia `rol` en su fila. Agregar usuarios o cambiar claves todavía no
+  se puede desde la app (queda pendiente).
 - Las tablas se pueden ver y editar desde el panel de Neon (**Tables**). Por ejemplo, para cargar el
   stock mínimo de una especie, o para **agregar un tamaño** (fila nueva en `tamanos`, con un número de
   `orden` para ubicarlo en la lista).
@@ -208,6 +231,6 @@ El stock no se guarda: la base lo calcula sumando los movimientos de cada depós
 | Dónde están los datos | Planilla de Google | Base de datos Neon |
 | Cómo se lleva el stock | Especie y tamaño | Especie, presentación y tamaño |
 | Usarla desde el celu | Sí, con el link | Sí, con el link de Vercel |
-| Quién puede usarla | Solo quien tiene acceso a la planilla | Cualquiera con el link (por ahora) |
-| Quién cargó cada cosa | Mail automático | Solo el campo Responsable |
+| Quién puede usarla | Solo quien tiene acceso a la planilla | Los usuarios, con nombre y clave |
+| Quién cargó cada cosa | Mail automático | El usuario que ingresó (Responsable) |
 | Personalización | Limitada | Total: es código propio |

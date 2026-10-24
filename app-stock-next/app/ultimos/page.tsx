@@ -1,3 +1,4 @@
+import { exigirUsuario } from '@/lib/sesion';
 import { leerCatalogo, leerUltimos } from '@/lib/almacen';
 import Link from 'next/link';
 import { etiquetaTamano, fechaLegible, numeroRemito } from '@/lib/stock';
@@ -7,6 +8,7 @@ export const dynamic = 'force-dynamic';
 // Cada fila es un cambio de stock en un depósito: un movimiento entre dos depósitos aparece dos veces (resta en
 // uno, suma en el otro). Los de remitos anulados se muestran tachados: no cuentan en el stock.
 export default async function PaginaUltimos() {
+  await exigirUsuario();
   const [{ especies }, { movimientos: ultimos, total }] = await Promise.all([leerCatalogo(), leerUltimos(30)]);
   const nombres = new Map(especies.map(e => [e.codigo, e.comun]));
 

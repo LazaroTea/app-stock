@@ -9,6 +9,7 @@ import {
   type RemitoNuevo,
 } from '@/lib/almacen';
 import { puedeAnularRemitos, puedeModificarRemitos } from '@/lib/permisos';
+import { usuarioActual } from '@/lib/sesion';
 import {
   DEPOSITOS,
   LUGARES_A_ESPECIFICAR,
@@ -34,7 +35,6 @@ export interface RemitoEnviado {
   procedenciaDetalle: string;
   destino: string;
   destinoDetalle: string;
-  responsable: string;
   observaciones: string;
   lineas: LineaRemito[];
 }
@@ -63,7 +63,8 @@ function revisarLugar(regla: ReglaLugar | null, lugar: unknown, detalle: unknown
 
 // Revisa todo lo que llega de la pantalla (aunque la pantalla ya lo haya controlado) y lo devuelve limpio,
 // listo para guardar. Si algo está mal, devuelve el mensaje de error.
-async function revisarRemito(remito: RemitoEnviado): Promise<RemitoNuevo | string> {
+// El responsable no viene de la pantalla: es el usuario que inició sesión.
+async function revisarRemito(remito: RemitoEnviado, responsable: string): Promise<RemitoNuevo | string> {
   const tipo = remito.tipo;
   const fecha = String(remito.fecha ?? '');
   if (!TIPOS.includes(tipo)) return 'Tipo de movimiento inválido.';
@@ -111,7 +112,7 @@ async function revisarRemito(remito: RemitoEnviado): Promise<RemitoNuevo | strin
     procedenciaDetalle: procedencia.detalle,
     destino: destino.lugar,
     destinoDetalle: destino.detalle,
-    responsable: limpiar(remito.responsable),
+    responsable,
     observaciones: String(remito.observaciones ?? '').trim(),
     lineas,
   };
@@ -123,11 +124,14 @@ function resumen(lineas: LineaRemito[]): string {
   return `${lineas.length} ${lineas.length === 1 ? 'línea' : 'líneas'}, ${plantas} ${plantas === 1 ? 'planta' : 'plantas'}`;
 }
 
+const SIN_SESION = 'Tu sesión se cerró: tocá Stock para volver a ingresar. Lo que ibas cargando queda guardado en este dispositivo.';
 const ERROR_BASE = 'No se pudo guardar: hubo un problema con la base de datos. Probá de nuevo en un rato.';
 
 export async function registrarRemito(_anterior: Resultado | null, remito: RemitoEnviado): Promise<Resultado> {
   try {
-    const nuevo = await revisarRemito(remito);
+    const usuario = await usuarioActual();
+    if (!usuario) return { ok: false, mensaje: SIN_SESION };
+    const nuevo = await revisarRemito(remito, usuario.nombre);
     if (typeof nuevo === 'string') return { ok: false, mensaje: nuevo };
     const numero = await guardarRemito(nuevo);
     revalidatePath('/', 'layout');
@@ -140,9 +144,12 @@ export async function registrarRemito(_anterior: Resultado | null, remito: Remit
 
 // Modificar un remito ya guardado: mismo número, datos y líneas nuevos. Se usa con .bind(null, numero).
 export async function modificarRemito(numero: number, _anterior: Resultado | null, remito: RemitoEnviado): Promise<Resultado> {
-  if (!puedeModificarRemitos()) return { ok: false, mensaje: 'No tenés permiso para modificar remitos.' };
   try {
-    const nuevo = await revisarRemito(remito);
+    const usuario = await usuarioActual();
+    if (!usuario) return { ok: false, mensaje: SIN_SESION };
+    if (!puedeModificarRemitos(usuario)) return { ok: false, mensaje: 'No tenés permiso para modificar remitos.' };
+    // Acá "responsable" es quien modifica: se guarda como modificado_por (ver modificarRemito en lib/almacen.ts).
+    const nuevo = await revisarRemito(remito, usuario.nombre);
     if (typeof nuevo === 'string') return { ok: false, mensaje: nuevo };
     if (!(await guardarCambios(numero, nuevo))) {
       return { ok: false, mensaje: 'No se pudo modificar: el remito no existe o está anulado.' };
@@ -157,12 +164,14 @@ export async function modificarRemito(numero: number, _anterior: Resultado | nul
 
 // Anular un remito: no se borra, pero deja de contar en el stock. El motivo es obligatorio.
 export async function anularRemito(numero: number, motivo: string): Promise<Resultado> {
-  if (!puedeAnularRemitos()) return { ok: false, mensaje: 'No tenés permiso para anular remitos.' };
   const m = limpiar(motivo);
   if (!m) return { ok: false, mensaje: 'Escribí el motivo de la anulación.' };
   if (m.length > 200) return { ok: false, mensaje: 'El motivo es muy largo (máximo 200 letras).' };
   try {
-    if (!(await marcarAnulado(numero, m))) return { ok: false, mensaje: 'El remito no existe o ya estaba anulado.' };
+    const usuario = await usuarioActual();
+    if (!usuario) return { ok: false, mensaje: SIN_SESION };
+    if (!puedeAnularRemitos(usuario)) return { ok: false, mensaje: 'No tenés permiso para anular remitos.' };
+    if (!(await marcarAnulado(numero, m, usuario.nombre))) return { ok: false, mensaje: 'El remito no existe o ya estaba anulado.' };
     revalidatePath('/', 'layout');
     return { ok: true, numero, mensaje: `Remito N.º ${numeroRemito(numero)} anulado.` };
   } catch (e) {

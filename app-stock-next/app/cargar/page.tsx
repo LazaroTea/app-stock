@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { leerCatalogo, leerRemito, leerStock, leerSugerencias } from '@/lib/almacen';
 import { puedeModificarRemitos } from '@/lib/permisos';
+import { exigirUsuario } from '@/lib/sesion';
 import { numeroRemito } from '@/lib/stock';
 import Formulario from './Formulario';
 
@@ -8,6 +9,7 @@ export const dynamic = 'force-dynamic';
 
 // /cargar: remito nuevo. /cargar?remito=12: modificar el remito 12.
 export default async function PaginaCargar({ searchParams }: { searchParams: Promise<{ remito?: string }> }) {
+  const usuario = await exigirUsuario();
   const numero = Number((await searchParams).remito);
   const modificando = Number.isInteger(numero) && numero > 0;
 
@@ -19,7 +21,7 @@ export default async function PaginaCargar({ searchParams }: { searchParams: Pro
   ]);
 
   if (modificando) {
-    const problema = !puedeModificarRemitos()
+    const problema = !puedeModificarRemitos(usuario)
       ? 'No tenés permiso para modificar remitos.'
       : !editando
         ? 'Ese remito no existe.'
@@ -49,6 +51,8 @@ export default async function PaginaCargar({ searchParams }: { searchParams: Pro
       stock={stock}
       sugerencias={sugerencias}
       editando={editando ?? undefined}
+      // El responsable de un remito nuevo es quien inició sesión; al modificar, se mantiene el original.
+      usuario={usuario.nombre}
       // Vercel corre en hora UTC: la fecha de hoy se calcula con la hora de Argentina.
       hoy={new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' })}
     />

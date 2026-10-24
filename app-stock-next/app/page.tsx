@@ -1,3 +1,4 @@
+import { exigirUsuario } from '@/lib/sesion';
 import { leerCatalogo, leerStock } from '@/lib/almacen';
 import ListaStock from './ListaStock';
 
@@ -5,6 +6,7 @@ import ListaStock from './ListaStock';
 export const dynamic = 'force-dynamic';
 
 export default async function PaginaStock() {
+  await exigirUsuario();
   const [{ especies, presentaciones, tamanos }, stock] = await Promise.all([leerCatalogo(), leerStock()]);
   return <ListaStock especies={especies} presentaciones={presentaciones} tamanos={tamanos} stock={stock} />;
 }

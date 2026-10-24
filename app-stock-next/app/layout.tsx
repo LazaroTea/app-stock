@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { Montserrat, Raleway } from 'next/font/google';
+import { usuarioActual } from '@/lib/sesion';
 import Navegacion from './Navegacion';
+import { cerrarSesion } from './sesion';
 import './globals.css';
 
 // Tipografías de la marca Native (las mismas de nativetrees.com.ar y de los presupuestos):
@@ -15,7 +17,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#646945' };
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+export default async function Layout({ children }: { children: React.ReactNode }) {
+  const usuario = await usuarioActual();
   return (
     <html lang="es" className={`${montserrat.variable} ${raleway.variable}`}>
       <body>
@@ -27,8 +30,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <span className="titulo-app">Stock</span>
             </div>
             {/* En el celu la navegación va abajo (ver globals.css); en pantallas grandes, acá arriba. */}
-            <Navegacion />
+            {usuario && <Navegacion />}
             <span className="lema">Movemos naturaleza. Creamos paisaje</span>
+            {usuario && (
+              <form action={cerrarSesion} className="usuario">
+                <span className="usuario-nombre">
+                  {usuario.nombre}
+                  <small>{usuario.rol}</small>
+                </span>
+                <button type="submit" className="salir">Salir</button>
+              </form>
+            )}
           </div>
         </header>
         <main className="contenedor">{children}</main>

@@ -387,12 +387,55 @@ marca ANULADO, sin botones de modificar ni anular, y `/cargar?remito=N` avisa qu
 prueba se borró (el próximo es el 000002). Compila sin errores.
 
 **Pendiente**
-- [ ] Restringir modificar y anular a ciertos usuarios (cuando haya usuarios), en `lib/permisos.ts`.
+- [x] Restringir modificar y anular a ciertos usuarios (hecho el 2026-10-24: solo administradores).
 - [ ] Más adelante: revisar si se vuelve a limitar por stock (el usuario lo quiere probar después).
 - [ ] Listado de especies: por ahora está bien (el usuario lo dio por correcto el 2026-10-24); quizás se retome.
 - [ ] ¿Sumar las otras especies exóticas de la planilla de cotizaciones y de la web (fresnos, liquidámbar,
       olivo, etc.)?
 - [ ] Subir estos cambios a GitHub y confirmar que Vercel la publica sin error.
-- [ ] **Agregar usuarios e inicio de sesión**: hoy cualquiera con el link puede cargar movimientos. El
-      Responsable del remito tiene que salir del usuario que inició sesión.
+- [x] **Agregar usuarios e inicio de sesión** (hecho el 2026-10-24, ver abajo).
+- [ ] Cambiar la contraseña de la base en Neon (quedó escrita en el chat) y actualizar `.env.local`.
+
+## 2026-10-24: usuarios, ingreso y roles
+
+**Pedido:** usuarios para Gustavo, Rocío, Ezequiel, Martin, Estela, Martina, Sebastián y María, todos con la
+clave 1234 por ahora (los criterios de seguridad se ven más adelante). Dos roles: **Administrador** (Rocío y
+Gustavo, pueden todo) y **Colaborador** (solo movimientos y ajustes).
+
+**Decisiones**
+- **Claves encriptadas** (`lib/claves.ts`): en la base no queda la clave escrita, así que cuando se pasen a
+  claves de verdad ya está resuelto cómo se guardan.
+- **Sesiones en la base** (tabla `sesiones`), con una cookie que el código de la página no puede leer. Duran
+  30 días por dispositivo. Al tocar **Salir** se borra la sesión. Un usuario con `activo = false` deja de poder
+  entrar al instante.
+- **Pantalla de ingreso** con el nombre en un desplegable (son pocos) y la clave. Si algo está mal, el mensaje
+  no dice si fue el nombre o la clave.
+- El **colaborador** puede cargar (Movimiento y Ajuste), ver Stock y Últimos e imprimir remitos. No ve los
+  botones Modificar ni Anular, y el servidor lo rechaza aunque lo intente igual.
+- El **responsable** del remito sale del usuario que ingresó (ya no se escribe). Al **modificar**, el
+  responsable sigue siendo quien lo emitió y se anota quién lo modificó (`modificado_por`); al **anular**,
+  quién lo anuló (`anulado_por`). Se ve en la página del remito.
+
+**Qué se hizo**
+- Base: tablas `usuarios` y `sesiones`, columnas `modificado_por` y `anulado_por` en `remitos`. Los 8 usuarios
+  se cargan solos si la tabla está vacía.
+- Todas las pantallas piden haber ingresado (si no, llevan a `/login`), y guardar, modificar y anular revisan
+  la sesión en el servidor.
+- Encabezado: nombre, rol y botón **Salir**; las pestañas no aparecen en la pantalla de ingreso.
+- `lib/permisos.ts` ahora decide según el rol.
+
+**Probado** contra la base real: clave equivocada rechazada (y el nombre elegido no se borra); Martina
+(colaboradora) entra, no ve Modificar ni Anular y `/cargar?remito=1` le dice que no tiene permiso; guardó un
+ajuste de prueba con responsable Martina. Gustavo (administrador) lo modificó (el responsable sigue siendo
+Martina, "modificado por Gustavo") y lo anuló ("anulado por Gustavo"). Encabezado bien en el celu. El remito y
+las sesiones de prueba se borraron (el próximo remito sigue siendo el 000002). Compila sin errores.
+
+**Pendiente**
+- [ ] Criterios de seguridad de las claves: que cada uno cambie la suya, largo mínimo, etc. (hoy todos 1234).
+- [ ] Desde la app, que un administrador pueda agregar o desactivar usuarios y cambiar roles o claves (hoy,
+      desde el panel de Neon).
+- [ ] Más adelante: revisar si se vuelve a limitar por stock (el usuario lo quiere probar después).
+- [ ] Listado de especies: por ahora está bien; quizás se retome.
+- [ ] Subir estos cambios a GitHub y confirmar que Vercel la publica sin error. **Ojo:** la base ya tiene las
+      tablas nuevas; conviene subir pronto.
 - [ ] Cambiar la contraseña de la base en Neon (quedó escrita en el chat) y actualizar `.env.local`.
