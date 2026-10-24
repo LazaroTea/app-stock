@@ -120,6 +120,11 @@ async function crearTablas() {
           ALTER TABLE remitos ADD CONSTRAINT remitos_tipo_check CHECK (tipo IN ('Movimiento', 'Ajuste'));
         END IF;
       END $$`,
+    // Anular y modificar (2026-10-24): un remito anulado no se borra, pero deja de contar en el stock.
+    sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS anulado boolean NOT NULL DEFAULT false`,
+    sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS anulado_motivo text NOT NULL DEFAULT ''`,
+    sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS anulado_en timestamptz`,
+    sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS modificado_en timestamptz`,
     // Cada línea del remito genera uno o dos movimientos: lo que suma (+) o resta (-) en un depósito.
     // "linea" es el número de línea dentro del remito (en un pase, los dos movimientos tienen la misma).
     sql`CREATE TABLE IF NOT EXISTS movimientos (
@@ -172,12 +177,15 @@ export async function leerCatalogo(): Promise<Catalogo> {
  * El stock de cada depósito, sumado por la base de datos:
  * { depósito: { código: { "presentación · tamaño": cantidad } } }.
  * Con "Especificar", cada tamaño escrito a mano se cuenta aparte (ej. "Maceta · 5 m de altura").
+ * Los remitos anulados no cuentan.
  */
 export async function leerStock(): Promise<StockPorDeposito> {
   await prepararBase();
   const filas = await conexion()`
-    SELECT deposito, codigo, presentacion, tamano, tamano_detalle, SUM(cantidad)::int AS cantidad
-    FROM movimientos GROUP BY deposito, codigo, presentacion, tamano, tamano_detalle`;
+    SELECT m.deposito, m.codigo, m.presentacion, m.tamano, m.tamano_detalle, SUM(m.cantidad)::int AS cantidad
+    FROM movimientos m JOIN remitos r ON r.id = m.remito_id
+    WHERE NOT r.anulado
+    GROUP BY m.deposito, m.codigo, m.presentacion, m.tamano, m.tamano_detalle`;
   const stock: StockPorDeposito = {};
   for (const f of filas) {
     const clave = claveStock(f.presentacion, etiquetaTamano(f.tamano, f.tamano_detalle));
@@ -192,7 +200,7 @@ export async function leerUltimos(cantidad: number): Promise<{ movimientos: Movi
   const sql = conexion();
   const [filas, [{ total }]] = await Promise.all([
     sql`SELECT m.id, to_char(r.fecha, 'YYYY-MM-DD') AS fecha, r.tipo, m.deposito, m.codigo, m.presentacion, m.tamano,
-          m.tamano_detalle AS "tamanoDetalle", m.cantidad, r.responsable, r.id AS remito
+          m.tamano_detalle AS "tamanoDetalle", m.cantidad, r.responsable, r.id AS remito, r.anulado
         FROM movimientos m JOIN remitos r ON r.id = m.remito_id
         ORDER BY r.fecha DESC, m.id DESC LIMIT ${cantidad}`,
     sql`SELECT count(*)::int AS total FROM movimientos`,
@@ -251,16 +259,24 @@ export interface RemitoGuardado {
   destinoDetalle: string;
   responsable: string;
   observaciones: string;
+  anulado: boolean;
+  anuladoMotivo: string;
+  /** Cuándo se anuló o se modificó por última vez ("dd/mm/aaaa hh:mm", hora de Argentina), o null. */
+  anuladoEn: string | null;
+  modificadoEn: string | null;
   lineas: (LineaRemito & { comun: string; cientifico: string })[];
 }
 
-/** Un remito ya guardado, con sus líneas, para verlo o imprimirlo. Devuelve null si no existe. */
+/** Un remito ya guardado, con sus líneas, para verlo, imprimirlo o modificarlo. Devuelve null si no existe. */
 export async function leerRemito(numero: number): Promise<RemitoGuardado | null> {
   await prepararBase();
   const sql = conexion();
   const [[remito], lineas] = await Promise.all([
     sql`SELECT id AS numero, to_char(fecha, 'YYYY-MM-DD') AS fecha, tipo, destinatario, responsable, observaciones,
-          procedencia, procedencia_detalle AS "procedenciaDetalle", destino, destino_detalle AS "destinoDetalle"
+          procedencia, procedencia_detalle AS "procedenciaDetalle", destino, destino_detalle AS "destinoDetalle",
+          anulado, anulado_motivo AS "anuladoMotivo",
+          to_char(anulado_en AT TIME ZONE 'America/Argentina/Buenos_Aires', 'DD/MM/YYYY HH24:MI') AS "anuladoEn",
+          to_char(modificado_en AT TIME ZONE 'America/Argentina/Buenos_Aires', 'DD/MM/YYYY HH24:MI') AS "modificadoEn"
         FROM remitos WHERE id = ${numero}`,
     // Una fila por línea (en un pase hay dos movimientos por línea). La cantidad va sin signo,
     // salvo en los ajustes.
@@ -279,19 +295,7 @@ export async function leerRemito(numero: number): Promise<RemitoGuardado | null>
  */
 export async function guardarRemito(r: RemitoNuevo): Promise<number> {
   await prepararBase();
-  const movimientos = JSON.stringify(
-    r.lineas.flatMap((l, linea) =>
-      efectos(r.tipo, r.procedencia, r.destino, l.cantidad).map(e => ({
-        linea,
-        deposito: e.deposito,
-        codigo: l.codigo,
-        presentacion: l.presentacion,
-        tamano: l.tamano,
-        tamano_detalle: l.tamanoDetalle,
-        cantidad: e.cantidad,
-      })),
-    ),
-  );
+  const movimientos = movimientosDe(r);
   const [resultado] = await conexion().query(
     `WITH remito AS (
        INSERT INTO remitos (fecha, tipo, responsable, observaciones, destinatario,
@@ -314,4 +318,64 @@ export async function guardarRemito(r: RemitoNuevo): Promise<number> {
     ],
   );
   return Number(resultado.numero);
+}
+
+// Los movimientos (en JSON) que genera un remito: uno o dos por línea, con lo que suma o resta en cada depósito.
+function movimientosDe(r: RemitoNuevo): string {
+  return JSON.stringify(
+    r.lineas.flatMap((l, linea) =>
+      efectos(r.tipo, r.procedencia, r.destino, l.cantidad).map(e => ({
+        linea,
+        deposito: e.deposito,
+        codigo: l.codigo,
+        presentacion: l.presentacion,
+        tamano: l.tamano,
+        tamano_detalle: l.tamanoDetalle,
+        cantidad: e.cantidad,
+      })),
+    ),
+  );
+}
+
+/**
+ * Reemplaza los datos y las líneas de un remito ya guardado (mismo número), en una sola operación.
+ * Devuelve false si el remito no existe o está anulado (un remito anulado no se modifica).
+ */
+export async function modificarRemito(numero: number, r: RemitoNuevo): Promise<boolean> {
+  await prepararBase();
+  const [resultado] = await conexion().query(
+    `WITH remito AS (
+       UPDATE remitos SET fecha = $2, tipo = $3, responsable = $4, observaciones = $5, destinatario = $6,
+              procedencia = $7, procedencia_detalle = $8, destino = $9, destino_detalle = $10, modificado_en = now()
+       WHERE id = $11 AND NOT anulado
+       RETURNING id
+     ), borrados AS (
+       DELETE FROM movimientos WHERE remito_id IN (SELECT id FROM remito)
+     ), guardados AS (
+       INSERT INTO movimientos (remito_id, linea, deposito, codigo, presentacion, tamano, tamano_detalle, cantidad)
+       SELECT remito.id, x.linea, x.deposito, x.codigo, x.presentacion, x.tamano, x.tamano_detalle, x.cantidad
+       FROM json_to_recordset($1::json)
+         AS x (linea integer, deposito text, codigo text, presentacion text, tamano text, tamano_detalle text,
+               cantidad integer)
+       CROSS JOIN remito
+     )
+     SELECT count(*)::int AS cambiados FROM remito`,
+    [
+      movimientosDe(r), r.fecha, r.tipo, r.responsable, r.observaciones, r.destinatario,
+      r.procedencia, r.procedenciaDetalle, r.destino, r.destinoDetalle, numero,
+    ],
+  );
+  return resultado.cambiados === 1;
+}
+
+/**
+ * Anula un remito: queda guardado con su número, pero sus movimientos dejan de contar en el stock.
+ * Devuelve false si no existe o ya estaba anulado.
+ */
+export async function anularRemito(numero: number, motivo: string): Promise<boolean> {
+  await prepararBase();
+  const filas = await conexion()`
+    UPDATE remitos SET anulado = true, anulado_motivo = ${motivo}, anulado_en = now()
+    WHERE id = ${numero} AND NOT anulado RETURNING id`;
+  return filas.length === 1;
 }

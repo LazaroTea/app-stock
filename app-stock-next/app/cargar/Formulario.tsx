@@ -1,8 +1,11 @@
 'use client';
 // Pantalla Cargar, en formato remito: arriba los datos del remito, abajo se suman las plantas una por una
 // y al costado se va armando el remito. "Guardar movimiento" guarda todo el remito junto.
+// Con "editando", la misma pantalla sirve para modificar un remito ya guardado (mismo número).
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { startTransition, useActionState, useEffect, useRef, useState } from 'react';
-import { registrarRemito } from '../acciones';
+import { modificarRemito, registrarRemito } from '../acciones';
 import {
   buscarEspecie,
   claveStock,
@@ -14,10 +17,11 @@ import {
   fechaLegible,
   LUGARES_A_ESPECIFICAR,
   lugaresDelTipo,
+  numeroRemito,
   TAMANO_A_ESPECIFICAR,
   type ReglaLugar,
 } from '@/lib/stock';
-import type { Sugerencias } from '@/lib/almacen';
+import type { RemitoGuardado, Sugerencias } from '@/lib/almacen';
 import { TIPOS, type Especie, type LineaRemito, type StockPorDeposito, type TipoMovimiento } from '@/lib/tipos';
 
 const AYUDAS: Record<TipoMovimiento, string> = {
@@ -36,6 +40,8 @@ interface Props {
   stock: StockPorDeposito;
   /** Destinatarios, proveedores y clientes ya usados, para sugerirlos. */
   sugerencias: Sugerencias;
+  /** El remito que se está modificando (si no hay, es un remito nuevo). */
+  editando?: RemitoGuardado;
   hoy: string;
 }
 
@@ -44,20 +50,34 @@ const limpiar = (texto: string) => texto.trim().replace(/\s+/g, ' ');
 
 const claveLinea = (l: LineaRemito) => claveStock(l.presentacion, etiquetaTamano(l.tamano, l.tamanoDetalle));
 
-export default function Formulario({ especies, presentaciones, tamanos, stock, sugerencias, hoy }: Props) {
-  const [resultado, enviar, guardando] = useActionState(registrarRemito, null);
+export default function Formulario({ especies, presentaciones, tamanos, stock, sugerencias, editando, hoy }: Props) {
+  const router = useRouter();
+  const [resultado, enviar, guardando] = useActionState(
+    editando ? modificarRemito.bind(null, editando.numero) : registrarRemito,
+    null,
+  );
 
-  // Datos del remito
-  const [tipo, setTipo] = useState<TipoMovimiento>('Movimiento');
-  const [fecha, setFecha] = useState(hoy);
-  const [destinatario, setDestinatario] = useState('');
-  const [procedencia, setProcedencia] = useState('');
-  const [procedenciaDetalle, setProcedenciaDetalle] = useState('');
-  const [destino, setDestino] = useState('');
-  const [destinoDetalle, setDestinoDetalle] = useState('');
-  const [responsable, setResponsable] = useState('');
-  const [observaciones, setObservaciones] = useState('');
-  const [lineas, setLineas] = useState<LineaRemito[]>([]);
+  // Datos del remito (al modificar, arrancan con los del remito guardado)
+  const [tipo, setTipo] = useState<TipoMovimiento>(
+    editando && TIPOS.includes(editando.tipo) ? editando.tipo : 'Movimiento',
+  );
+  const [fecha, setFecha] = useState(editando?.fecha ?? hoy);
+  const [destinatario, setDestinatario] = useState(editando?.destinatario ?? '');
+  const [procedencia, setProcedencia] = useState(editando?.procedencia ?? '');
+  const [procedenciaDetalle, setProcedenciaDetalle] = useState(editando?.procedenciaDetalle ?? '');
+  const [destino, setDestino] = useState(editando?.destino ?? '');
+  const [destinoDetalle, setDestinoDetalle] = useState(editando?.destinoDetalle ?? '');
+  const [responsable, setResponsable] = useState(editando?.responsable ?? '');
+  const [observaciones, setObservaciones] = useState(editando?.observaciones ?? '');
+  const [lineas, setLineas] = useState<LineaRemito[]>(
+    editando?.lineas.map(({ codigo, presentacion, tamano, tamanoDetalle, cantidad }) => ({
+      codigo,
+      presentacion,
+      tamano,
+      tamanoDetalle,
+      cantidad,
+    })) ?? [],
+  );
 
   // La planta que se está por sumar
   const [especie, setEspecie] = useState('');
@@ -73,7 +93,9 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
   const reglas = lugaresDelTipo(tipo);
 
   // Al abrir: el responsable recordado y el remito a medio armar, si había.
+  // Al modificar un remito no: se usan sus datos y no se toca el borrador.
   useEffect(() => {
+    if (editando) return;
     try {
       setResponsable(localStorage.getItem('responsable') ?? '');
       const borrador = JSON.parse(localStorage.getItem(BORRADOR) ?? 'null');
@@ -90,6 +112,7 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
   }, []);
 
   useEffect(() => {
+    if (editando) return;
     try {
       const borrador = { tipo, destinatario, procedencia, procedenciaDetalle, destino, destinoDetalle, lineas };
       if (lineas.length) localStorage.setItem(BORRADOR, JSON.stringify(borrador));
@@ -98,7 +121,12 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
   }, [tipo, destinatario, procedencia, procedenciaDetalle, destino, destinoDetalle, lineas]);
 
   // Después de guardar bien, el remito queda vacío para empezar otro.
+  // Después de modificar, se vuelve a la página del remito.
   useEffect(() => {
+    if (resultado?.ok && editando) {
+      router.push(`/remitos/${editando.numero}`);
+      return;
+    }
     if (resultado?.ok) {
       setLineas([]);
       setDestinatario('');
@@ -245,6 +273,13 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
         }}
         autoComplete="off"
       >
+        {editando && (
+          <div className="aviso-modificando">
+            Estás modificando el remito <b>N.º {numeroRemito(editando.numero)}</b>. Al guardar, sus datos y sus líneas
+            se reemplazan por los de esta pantalla y el stock se recalcula.{' '}
+            <Link href={`/remitos/${editando.numero}`}>Cancelar</Link>
+          </div>
+        )}
         <h2 className="seccion">Datos del remito</h2>
 
         <label>Tipo de movimiento</label>
@@ -437,7 +472,9 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
         <div className="remito-cabecera">
           <div>
             <div className="remito-titulo">Remito</div>
-            <div className="remito-numero">N.º se asigna al guardar</div>
+            <div className="remito-numero">
+              {editando ? `N.º ${numeroRemito(editando.numero)} (modificando)` : 'N.º se asigna al guardar'}
+            </div>
           </div>
           <div className="remito-datos">
             <div>{tipo}</div>
@@ -528,7 +565,7 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
           disabled={guardando || lineas.length === 0 || problema !== ''}
           onClick={guardar}
         >
-          {guardando ? 'Guardando…' : 'Guardar movimiento'}
+          {guardando ? 'Guardando…' : editando ? 'Guardar cambios' : 'Guardar movimiento'}
         </button>
         {resultado && (
           <div className={resultado.ok ? 'mensaje ok' : 'mensaje error'}>

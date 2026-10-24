@@ -113,8 +113,17 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
   en la ventana de impresión se elige la impresora o **Guardar como PDF**. Los datos de la empresa que
   aparecen se cambian en `lib/empresa.ts`. Dice "Remito interno… no válido como factura", porque no es un
   remito fiscal.
+- **Modificar un remito:** en la página del remito, el botón **Modificar** abre Cargar con todos sus datos y
+  líneas (con el aviso "Estás modificando el remito N.º…"). Al tocar **Guardar cambios** se reemplazan sus
+  datos y líneas, el stock se recalcula y el número no cambia. Queda anotado cuándo se modificó por última vez.
+- **Anular un remito:** en la página del remito, el botón **Anular** pide el motivo y confirma. El remito no se
+  borra: queda con su número, el motivo, la fecha y la marca **ANULADO** (también al imprimir), y sus plantas
+  dejan de contar en el stock. Un remito anulado ya no se puede modificar, y no se puede "desanular" desde la app.
+- **Quién puede modificar o anular:** por ahora todos. Cuando haya usuarios, se va a restringir en
+  `lib/permisos.ts` (la pantalla oculta los botones y el servidor rechaza el pedido).
 - **Últimos:** los últimos 30 movimientos: cada fila es lo que suma (+) o resta (−) en un depósito, con su
-  número de remito (un pase aparece dos veces, una por depósito).
+  número de remito (un movimiento entre dos depósitos aparece dos veces, una por depósito). Tocando el número
+  se abre el remito, para verlo, imprimirlo, modificarlo o anularlo. Los de remitos anulados se ven tachados.
 
 | Pantalla | Cómo se acomoda |
 |---|---|
@@ -128,7 +137,8 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 |---|---|
 | `app/page.tsx` + `app/ListaStock.tsx` | Pantalla **Stock**: total por especie, presentación y tamaño, buscador y filtros. |
 | `app/cargar/` | Pantalla **Cargar**: el remito (datos, sumar plantas y guardar). |
-| `app/remitos/[numero]/` | Un remito guardado, listo para imprimir o guardar como PDF. |
+| `app/remitos/[numero]/` | Un remito guardado: imprimir o guardar como PDF, modificar y anular. |
+| `lib/permisos.ts` | Quién puede modificar y anular remitos (por ahora, todos). |
 | `lib/empresa.ts` | Los datos de Native que salen en el remito impreso. |
 | `app/not-found.tsx` | Lo que se ve si se entra a algo que no existe. |
 | `app/ultimos/page.tsx` | Pantalla **Últimos**: los últimos 30 movimientos. |
@@ -153,7 +163,8 @@ Hay cinco tablas:
 - **tamanos**: los tamaños y su orden.
 - **remitos**: número (`id`), fecha, tipo (Movimiento o Ajuste), punto de partida (`procedencia`) y de llegada
   (`destino`), con `procedencia_detalle` y `destino_detalle` para el nombre del proveedor o cliente (en los
-  ajustes, el depósito va en `destino`), destinatario, responsable y observaciones.
+  ajustes, el depósito va en `destino`), destinatario, responsable y observaciones, y si está anulado
+  (`anulado`, `anulado_motivo`, `anulado_en`) o cuándo se modificó (`modificado_en`).
 - **movimientos**: lo que cada línea de remito suma (+) o resta (−) en un **depósito** (`deposito`), con su
   especie, presentación, tamaño (y en `tamano_detalle`, lo escrito a mano con "Especificar"), el número de
   remito (`remito_id`) y el número de línea (`linea`). Un movimiento entre dos depósitos genera dos filas por
@@ -166,7 +177,8 @@ El stock no se guarda: la base lo calcula sumando los movimientos de cada depós
 - Las tablas se pueden ver y editar desde el panel de Neon (**Tables**). Por ejemplo, para cargar el
   stock mínimo de una especie, o para **agregar un tamaño** (fila nueva en `tamanos`, con un número de
   `orden` para ubicarlo en la lista).
-- Un remito se guarda entero o no se guarda: nunca queda a medias.
+- Un remito se guarda (o se modifica) entero o no se guarda: nunca queda a medias. Los remitos anulados no
+  cuentan en el stock.
 
 ### Agregar o corregir especies
 

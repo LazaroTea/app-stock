@@ -209,9 +209,49 @@ button.quitar:hover { background: var(--rojo-claro); color: var(--rojo); }
 
 /* ---------- Remito impreso (como los presupuestos de Native) ---------- */
 
-.acciones-remito { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.acciones-remito { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
 .acciones-remito a { color: var(--verde-oscuro); font-family: var(--fuente-titulos), sans-serif; font-weight: 600; }
 .acciones-remito button.principal { width: auto; margin: 0; padding: 12px 20px; }
+.acciones-botones { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; justify-content: flex-end; }
+
+/* Botones de Modificar y Anular. */
+.boton-secundario, .boton-peligro, .boton-texto {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 10px 18px; border-radius: 8px; cursor: pointer;
+  font-family: var(--fuente-titulos), sans-serif; font-size: .9rem; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; text-decoration: none;
+}
+.acciones-remito a.boton-secundario, .boton-secundario { border: 2px solid var(--verde); background: var(--blanco); color: var(--verde); }
+.boton-peligro { border: 2px solid var(--rojo); background: var(--blanco); color: var(--rojo); }
+.anular-caja .boton-peligro { background: var(--rojo); color: var(--blanco); }
+.boton-peligro:disabled, .boton-texto:disabled { opacity: .5; cursor: default; }
+.boton-texto { border: 0; background: none; color: var(--gris); }
+.anular-caja {
+  width: min(100%, 420px); background: var(--blanco); border: 1px solid var(--rojo); border-radius: 10px; padding: 12px;
+}
+.anular-caja label { margin-top: 0; }
+.anular-botones { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+
+/* Aviso arriba de Cargar cuando se está modificando un remito. */
+.aviso-modificando {
+  margin-bottom: 16px; padding: 12px; border-radius: 8px; background: var(--salvia-claro); color: var(--verde-oscuro);
+  border-left: 4px solid var(--verde);
+}
+
+/* Remito anulado: aviso arriba y la palabra ANULADO cruzada sobre la hoja (también al imprimir). */
+.documento-anulado {
+  margin-bottom: 20px; padding: 10px 14px; border: 2px solid var(--rojo); border-radius: 6px; color: var(--rojo);
+}
+.documento-anulado span { font-weight: 600; }
+.documento.anulado { position: relative; overflow: hidden; }
+.documento.anulado::after {
+  content: 'ANULADO'; position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%) rotate(-25deg);
+  font-family: var(--fuente-titulos), sans-serif; font-size: 7rem; font-weight: 700; letter-spacing: .1em;
+  color: rgba(166, 58, 38, .18); pointer-events: none; white-space: nowrap;
+}
+
+/* En Últimos, los movimientos de remitos anulados se ven tachados (no cuentan en el stock). */
+tr.anulado td { color: var(--gris); text-decoration: line-through; }
+tr.anulado td.estado { text-decoration: none; }
 
 .documento {
   background: var(--blanco); color: #222; margin: 16px auto 0; max-width: 820px;

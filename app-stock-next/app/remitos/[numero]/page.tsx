@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { leerRemito } from '@/lib/almacen';
 import { EMPRESA } from '@/lib/empresa';
+import { puedeAnularRemitos, puedeModificarRemitos } from '@/lib/permisos';
 import { etiquetaLugar, etiquetaTamano, fechaLegible, lugaresDelTipo, numeroRemito } from '@/lib/stock';
+import AnularRemito from './AnularRemito';
 import BotonImprimir from './BotonImprimir';
 
 export const dynamic = 'force-dynamic';
@@ -26,17 +28,41 @@ export default async function PaginaRemito({ params }: Props) {
   // Los títulos dependen del tipo: "Procedencia" / "Depósito de destino" en una entrada, etc.
   const reglas = lugaresDelTipo(remito.tipo);
 
+  // Modificar y anular: por ahora todos pueden (ver lib/permisos.ts); un remito anulado ya no se toca.
+  const puedeModificar = !remito.anulado && puedeModificarRemitos();
+  const puedeAnular = !remito.anulado && puedeAnularRemitos();
+
   return (
     <>
       <div className="acciones-remito no-imprimir">
         <Link href="/cargar">← Volver a Cargar</Link>
-        <BotonImprimir />
+        <div className="acciones-botones">
+          {puedeModificar && (
+            <Link href={`/cargar?remito=${remito.numero}`} className="boton-secundario">
+              Modificar
+            </Link>
+          )}
+          {puedeAnular && <AnularRemito numero={remito.numero} />}
+          <BotonImprimir />
+        </div>
       </div>
       <p className="ayuda no-imprimir">
         Para descargarlo, elegí <b>Guardar como PDF</b> en la ventana de impresión.
+        {remito.modificadoEn && ` Modificado por última vez el ${remito.modificadoEn}.`}
       </p>
 
-      <article className="documento">
+      <article className={remito.anulado ? 'documento anulado' : 'documento'}>
+        {remito.anulado && (
+          <div className="documento-anulado">
+            <b>Remito anulado</b>
+            {remito.anuladoEn && ` el ${remito.anuladoEn}`}. Sus plantas no cuentan en el stock.
+            {remito.anuladoMotivo && (
+              <div>
+                <span>Motivo:</span> {remito.anuladoMotivo}
+              </div>
+            )}
+          </div>
+        )}
         <div className="documento-cabecera">
           <div>
             <img src="/logo-native-verde.png" alt="Native" className="documento-logo" width={713} height={212} />

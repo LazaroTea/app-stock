@@ -39,6 +39,8 @@ export interface Movimiento {
   cantidad: number;
   responsable: string;
   remito: number;
+  /** Si el remito está anulado: el movimiento se muestra, pero no cuenta en el stock. */
+  anulado: boolean;
 }
 
 /** Una línea de un remito: qué planta, cómo se entrega y cuántas. */

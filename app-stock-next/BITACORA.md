@@ -357,7 +357,37 @@ Los dos remitos de prueba se borraron (el próximo es el 000002). Compila sin er
 **Ojo:** hasta que se suba este código, la versión publicada no puede guardar remitos (la base ya no acepta
 los tipos viejos).
 
+## 2026-10-24: modificar y anular remitos
+
+**Pedido:** botones para modificar y anular movimientos, que más adelante se van a restringir a ciertos usuarios.
+
+**Decisiones**
+- Se modifica y se anula el **remito entero** (los movimientos de stock salen de sus líneas).
+- **Anular no borra:** el remito queda con su número, motivo (obligatorio), fecha y la marca ANULADO, y deja de
+  contar en el stock. Así queda la historia. No se puede modificar ni "desanular" desde la app.
+- **Modificar** reemplaza datos y líneas del remito, con el mismo número, y anota cuándo se modificó.
+- **Permisos en un solo lugar:** `lib/permisos.ts` (`puedeModificarRemitos`, `puedeAnularRemitos`). Hoy
+  devuelven siempre "sí"; cuando haya usuarios, se restringe ahí. Lo usan la pantalla (muestra u oculta los
+  botones) y el servidor (rechaza el pedido igual).
+
+**Qué se hizo**
+- Base: columnas `anulado`, `anulado_motivo`, `anulado_en` y `modificado_en` en `remitos`. El stock solo suma
+  remitos no anulados.
+- Página del remito: botones **Modificar** (abre `/cargar?remito=N`) y **Anular** (pide motivo y confirma);
+  aviso y marca ANULADO, también al imprimir.
+- Cargar: modo "modificar" con el remito precargado, aviso arriba, botón **Guardar cambios**; al guardar vuelve
+  a la página del remito. No toca el borrador del remito nuevo.
+- Guardar y modificar usan las mismas revisiones (`revisarRemito` en `app/acciones.ts`).
+- Últimos: el número de remito se ve también en el celu (es la puerta para modificar o anular) y los movimientos
+  de remitos anulados se ven tachados.
+
+**Probado** contra la base real: remito de prueba (5 lapachos, proveedor → Goya), modificado a 8 lapachos con
+llegada en Pilar (mismo número, stock: Pilar 8, Goya 0) y anulado con motivo (stock en cero, tachado en Últimos,
+marca ANULADO, sin botones de modificar ni anular, y `/cargar?remito=N` avisa que está anulado). El remito de
+prueba se borró (el próximo es el 000002). Compila sin errores.
+
 **Pendiente**
+- [ ] Restringir modificar y anular a ciertos usuarios (cuando haya usuarios), en `lib/permisos.ts`.
 - [ ] Más adelante: revisar si se vuelve a limitar por stock (el usuario lo quiere probar después).
 - [ ] Listado de especies: por ahora está bien (el usuario lo dio por correcto el 2026-10-24); quizás se retome.
 - [ ] ¿Sumar las otras especies exóticas de la planilla de cotizaciones y de la web (fresnos, liquidámbar,
