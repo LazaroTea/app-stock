@@ -484,3 +484,11 @@ espacio y la clave no). Ahora se revisa cada palabra del nombre.
 - [ ] Subir estos cambios a GitHub. Al publicarse, cada persona entra con 1234 y elige su clave.
 - [ ] Más adelante: revisar si se vuelve a limitar por stock (el usuario lo quiere probar después).
 - [ ] Listado de especies: por ahora está bien; quizás se retome.
+
+## 2026-10-24: Martina, administradora
+
+**Pedido:** que Martina también sea administradora.
+
+**Qué se hizo:** se cambió su rol en la base (rige al instante, también en la app publicada). Para que todo
+coincida, también se cambió en la lista de usuarios iniciales (`lib/almacen.ts`) y en el README. Ahora los
+administradores son Gustavo, Rocío y Martina. Más adelante, esto se puede hacer desde la pantalla **Usuarios**.

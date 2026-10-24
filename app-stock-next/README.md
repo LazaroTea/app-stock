@@ -74,8 +74,8 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 
   | Usuario | Rol | Qué puede hacer |
   |---|---|---|
-  | Gustavo, Rocío | **Administrador** | Todo: también modificar y anular remitos, y la pantalla **Usuarios**. |
-  | Ezequiel, Martin, Estela, Martina, Sebastián, María | **Colaborador** | Cargar movimientos y ajustes, ver el stock y Últimos, e imprimir remitos. No puede modificar ni anular. |
+  | Gustavo, Rocío, Martina | **Administrador** | Todo: también modificar y anular remitos, y la pantalla **Usuarios**. |
+  | Ezequiel, Martin, Estela, Sebastián, María | **Colaborador** | Cargar movimientos y ajustes, ver el stock y Últimos, e imprimir remitos. No puede modificar ni anular. |
 
 - **Primera vez (clave provisoria):** todos arrancan con la clave provisoria **1234**. Al entrar con una clave
   provisoria, la app pide elegir una propia antes de dejar hacer cualquier otra cosa.

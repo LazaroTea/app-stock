@@ -26,7 +26,7 @@ const USUARIOS_INICIALES: { nombre: string; rol: Rol }[] = [
   { nombre: 'Ezequiel', rol: 'Colaborador' },
   { nombre: 'Martin', rol: 'Colaborador' },
   { nombre: 'Estela', rol: 'Colaborador' },
-  { nombre: 'Martina', rol: 'Colaborador' },
+  { nombre: 'Martina', rol: 'Administrador' }, // administradora desde el 2026-10-24
   { nombre: 'Sebastián', rol: 'Colaborador' },
   { nombre: 'María', rol: 'Colaborador' },
 ];
