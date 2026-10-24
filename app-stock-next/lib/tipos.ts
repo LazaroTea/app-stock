@@ -1,11 +1,11 @@
 /**
  * Tipos de movimiento (ver las reglas en lugaresDelTipo y efectos, en lib/stock.ts):
- * - Entrada: de un proveedor o Palma Sola a un depósito (suma en el depósito).
- * - Salida: de un depósito a un cliente o Palma Sola (resta en el depósito).
- * - Pase: de un depósito a otro (resta en el de origen y suma en el de destino).
+ * - Movimiento: de un punto de partida a un punto de llegada. Resta en el depósito de partida y suma en el
+ *   de llegada (proveedor y cliente no llevan stock).
  * - Ajuste: corrige el stock de un depósito (positivo o negativo).
+ * Los remitos de antes del 2026-10-24 eran "Entrada", "Salida" o "Pase": se convirtieron a "Movimiento".
  */
-export const TIPOS = ['Entrada', 'Salida', 'Pase', 'Ajuste'] as const;
+export const TIPOS = ['Movimiento', 'Ajuste'] as const;
 export type TipoMovimiento = (typeof TIPOS)[number];
 
 export interface Especie {

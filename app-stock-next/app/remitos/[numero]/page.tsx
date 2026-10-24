@@ -61,7 +61,7 @@ export default async function PaginaRemito({ params }: Props) {
 
         <section className="documento-detalle">
           <div>
-            <span>Movimiento:</span> {remito.tipo}
+            <span>Tipo:</span> {remito.tipo}
           </div>
           {reglas.procedencia && remito.procedencia && (
             <div>

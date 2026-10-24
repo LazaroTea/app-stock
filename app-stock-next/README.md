@@ -6,8 +6,9 @@ los datos en una base de datos **Neon** (Postgres) en internet.
 
 El stock se lleva **por depósito** (Benavidez, Pilar y Goya) y, dentro de cada uno, por **especie**,
 **presentación** (Envasado, Maceta o Raíz desnuda) y **tamaño** (la lista de la planilla de cotizaciones del
-vivero: 6-8, 12-14, 3Lts, Ejemplar, etc.). Palma Sola no lleva stock: es un origen o destino, como un
-proveedor o un cliente.
+vivero: 6-8, 12-14, 3Lts, Ejemplar, etc.). El stock se mueve con **Movimientos** (de un punto de partida a
+uno de llegada) y **Ajustes**. Palma Sola, proveedores y clientes no llevan stock: son puntos de partida o de
+llegada.
 
 > **El stock arranca en cero** (2026-10-23). Las especies son reales: 179 en total (ver `lib/especies.ts`):
 > 130 árboles y arbustos nativos de Argentina, 21 palmeras (7 nativas, 13 exóticas y la cica) y 28 frutales
@@ -76,22 +77,20 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
   **todas**, y se puede ver **solo árboles**, **solo palmeras** o **solo frutales**. Al buscar por nombre
   aparecen también las que no tienen stock.
 - **Cargar** (en formato **remito**):
-  1. **Datos del remito:** tipo de movimiento, los lugares que corresponden a ese tipo, fecha, responsable,
+  1. **Datos del remito:** tipo (**Movimiento** o **Ajuste**), los lugares, fecha, responsable,
      **destinatario** (opcional: persona o contacto que recibe) y observaciones.
 
-     | Tipo | De dónde | A dónde | Qué hace con el stock |
+     | Tipo | Punto de partida | Punto de llegada | Qué hace con el stock |
      |---|---|---|---|
-     | **Entrada** | Procedencia (opcional): Palma Sola, Goya, Pilar, Benavidez o Proveedor | Depósito de destino | Suma en el depósito (*) |
-     | **Salida** | Depósito de origen | Destino (opcional): Palma Sola, Goya, Pilar, Benavidez o Cliente | Resta en el depósito (*) |
-     | **Pase** | Depósito de origen | Depósito de destino | Resta en el origen y suma en el destino |
-     | **Ajuste** | — | Depósito | Suma o resta (cantidad con signo) |
+     | **Movimiento** | Palma Sola, Goya, Pilar, Benavidez o Proveedor | Palma Sola, Goya, Pilar, Benavidez, Proveedor o Cliente | Resta en el depósito de partida y suma en el de llegada |
+     | **Ajuste** | — | Depósito (Goya, Pilar o Benavidez) | Suma o resta (cantidad con signo) |
 
-     (*) Si la procedencia de una entrada o el destino de una salida es un **depósito**, el stock se cruza
-     igual que en un pase: resta en un depósito y suma en el otro, así las plantas no se cuentan dos veces.
-     El depósito de origen y el de destino tienen que ser distintos.
+     Solo Goya, Pilar y Benavidez llevan stock. Por ejemplo: Proveedor → Goya suma en Goya; Goya → Pilar resta
+     en Goya y suma en Pilar; Pilar → Cliente o Pilar → Palma Sola resta en Pilar. El punto de partida o el de
+     llegada tiene que ser un depósito, y no pueden ser el mismo depósito.
 
      Si se elige Proveedor o Cliente, aparece un renglón para escribir cuál (se sugieren los ya usados).
-     Los depósitos y lugares están en `lib/stock.ts` (`DEPOSITOS`, `PROCEDENCIAS_ENTRADA`, `DESTINOS_SALIDA`).
+     Los depósitos y lugares están en `lib/stock.ts` (`DEPOSITOS`, `PARTIDAS`, `LLEGADAS`).
   2. **Sumar plantas:** especie, presentación (botones), tamaño (desplegable) y cantidad, y el botón
      **+ Sumar** (o Enter). Cada planta sumada aparece en el remito, al costado en la compu y abajo en el celu.
      Si se suma algo que ya está (misma especie, presentación y tamaño), se juntan las cantidades.
@@ -152,13 +151,13 @@ Hay cinco tablas:
   Frutal), stock mínimo.
 - **presentaciones**: Envasado, Maceta, Raíz desnuda (y su orden; la primera viene elegida al cargar).
 - **tamanos**: los tamaños y su orden.
-- **remitos**: número (`id`), fecha, tipo (Entrada, Salida, Pase o Ajuste), procedencia y destino (con
-  `procedencia_detalle` y `destino_detalle` para el nombre del proveedor o cliente; en los ajustes, el depósito
-  va en `destino`), destinatario, responsable y observaciones.
+- **remitos**: número (`id`), fecha, tipo (Movimiento o Ajuste), punto de partida (`procedencia`) y de llegada
+  (`destino`), con `procedencia_detalle` y `destino_detalle` para el nombre del proveedor o cliente (en los
+  ajustes, el depósito va en `destino`), destinatario, responsable y observaciones.
 - **movimientos**: lo que cada línea de remito suma (+) o resta (−) en un **depósito** (`deposito`), con su
   especie, presentación, tamaño (y en `tamano_detalle`, lo escrito a mano con "Especificar"), el número de
-  remito (`remito_id`) y el número de línea (`linea`). Un pase genera dos movimientos por línea: −N en el
-  depósito de origen y +N en el de destino.
+  remito (`remito_id`) y el número de línea (`linea`). Un movimiento entre dos depósitos genera dos filas por
+  línea: −N en el de partida y +N en el de llegada.
 
 El stock no se guarda: la base lo calcula sumando los movimientos de cada depósito.
 

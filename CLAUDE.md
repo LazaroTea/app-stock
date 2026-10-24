@@ -23,6 +23,7 @@ Los mensajes de commit van en español. Subir (push) solo cuando el usuario lo p
 - `app-stock/`: control de stock de árboles nativos del vivero (Google Sheets + Apps Script).
 - `app-stock-next/`: la misma app hecha en Next.js, publicada en Vercel, con una base Neon (Postgres).
   Stock por depósito (Benavidez, Pilar, Goya), especie, presentación y tamaño; carga en formato remito
-  (Entrada, Salida, Pase, Ajuste), sin límite de stock. Árboles nativos, palmeras y frutales.
+  (Movimiento de un punto de partida a uno de llegada, y Ajuste), sin límite de stock. Árboles nativos,
+  palmeras y frutales.
   Usa la estética de la marca Native (nativetrees.com.ar): colores en `app/globals.css`, logo en `public/`. La conexión está en `app-stock-next/.env.local`, que nunca se sube ni se muestra en el chat.
   Ojo: la app local usa la misma base que la publicada; borrar lo que se cargue al probar.

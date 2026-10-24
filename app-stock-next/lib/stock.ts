@@ -5,11 +5,11 @@ import type { Especie, Stock, StockPorDeposito, TipoMovimiento } from './tipos';
 /** Los depósitos de Native: cada uno lleva su propio stock. */
 export const DEPOSITOS = ['Benavidez', 'Pilar', 'Goya'];
 /**
- * De dónde pueden venir las entradas y a dónde pueden ir las salidas. Palma Sola, Proveedor y Cliente no
- * llevan stock; si se elige un depósito, el movimiento también cambia el stock de ese depósito (ver efectos).
+ * Puntos de partida y de llegada de un movimiento. Palma Sola, Proveedor y Cliente no llevan stock:
+ * solo cambia el stock de los depósitos (ver efectos).
  */
-export const PROCEDENCIAS_ENTRADA = ['Palma Sola', 'Goya', 'Pilar', 'Benavidez', 'Proveedor'];
-export const DESTINOS_SALIDA = ['Palma Sola', 'Goya', 'Pilar', 'Benavidez', 'Cliente'];
+export const PARTIDAS = ['Palma Sola', 'Goya', 'Pilar', 'Benavidez', 'Proveedor'];
+export const LLEGADAS = ['Palma Sola', 'Goya', 'Pilar', 'Benavidez', 'Proveedor', 'Cliente'];
 /** Con estos hay que escribir cuál (nombre del proveedor o del cliente). */
 export const LUGARES_A_ESPECIFICAR = ['Proveedor', 'Cliente'];
 
@@ -19,28 +19,21 @@ export interface ReglaLugar {
   obligatorio: boolean;
 }
 
-// Qué lugares se piden en cada tipo de movimiento. null = ese campo no va.
-export function lugaresDelTipo(tipo: TipoMovimiento): { procedencia: ReglaLugar | null; destino: ReglaLugar | null } {
-  const depositoOrigen = { titulo: 'Depósito de origen', opciones: DEPOSITOS, obligatorio: true };
-  const depositoDestino = { titulo: 'Depósito de destino', opciones: DEPOSITOS, obligatorio: true };
-  switch (tipo) {
-    case 'Entrada':
-      return { procedencia: { titulo: 'Procedencia', opciones: PROCEDENCIAS_ENTRADA, obligatorio: false }, destino: depositoDestino };
-    case 'Salida':
-      return { procedencia: depositoOrigen, destino: { titulo: 'Destino', opciones: DESTINOS_SALIDA, obligatorio: false } };
-    case 'Pase':
-      return { procedencia: depositoOrigen, destino: depositoDestino };
-    case 'Ajuste':
-      return { procedencia: null, destino: { titulo: 'Depósito', opciones: DEPOSITOS, obligatorio: true } };
-  }
+// Qué lugares se piden en cada tipo. null = ese campo no va. El punto de partida se guarda en "procedencia"
+// y el de llegada (o el depósito de un ajuste) en "destino".
+// Los remitos viejos ("Entrada", "Salida", "Pase") se muestran como un Movimiento.
+export function lugaresDelTipo(tipo: TipoMovimiento | string): { procedencia: ReglaLugar | null; destino: ReglaLugar | null } {
+  if (tipo === 'Ajuste') return { procedencia: null, destino: { titulo: 'Depósito', opciones: DEPOSITOS, obligatorio: true } };
+  return {
+    procedencia: { titulo: 'Punto de partida', opciones: PARTIDAS, obligatorio: true },
+    destino: { titulo: 'Punto de llegada', opciones: LLEGADAS, obligatorio: true },
+  };
 }
 
 /**
  * Qué le hace una línea de remito al stock de cada depósito:
- * la entrada suma en el destino, la salida resta en el origen, el pase resta en el origen y suma en el
- * destino, y el ajuste suma o resta (según su signo) en el depósito elegido.
- * Si una entrada viene de un depósito, o una salida va a un depósito, se cruza como un pase: así las plantas
- * no se cuentan dos veces.
+ * un movimiento resta en el punto de partida y suma en el de llegada, si son depósitos (Palma Sola,
+ * Proveedor y Cliente no llevan stock); un ajuste suma o resta, según su signo, en el depósito elegido.
  */
 export function efectos(
   tipo: TipoMovimiento,
@@ -48,31 +41,12 @@ export function efectos(
   destino: string,
   cantidad: number,
 ): { deposito: string; cantidad: number }[] {
+  if (tipo === 'Ajuste') return [{ deposito: destino, cantidad }];
   const n = Math.abs(cantidad);
-  const esDeposito = (lugar: string) => DEPOSITOS.includes(lugar);
-  switch (tipo) {
-    case 'Entrada':
-      return esDeposito(procedencia)
-        ? [
-            { deposito: procedencia, cantidad: -n },
-            { deposito: destino, cantidad: n },
-          ]
-        : [{ deposito: destino, cantidad: n }];
-    case 'Salida':
-      return esDeposito(destino)
-        ? [
-            { deposito: procedencia, cantidad: -n },
-            { deposito: destino, cantidad: n },
-          ]
-        : [{ deposito: procedencia, cantidad: -n }];
-    case 'Pase':
-      return [
-        { deposito: procedencia, cantidad: -n },
-        { deposito: destino, cantidad: n },
-      ];
-    case 'Ajuste':
-      return [{ deposito: destino, cantidad }];
-  }
+  const cambios: { deposito: string; cantidad: number }[] = [];
+  if (DEPOSITOS.includes(procedencia)) cambios.push({ deposito: procedencia, cantidad: -n });
+  if (DEPOSITOS.includes(destino)) cambios.push({ deposito: destino, cantidad: n });
+  return cambios;
 }
 
 // El stock de un depósito, o de todos sumados si deposito es "".

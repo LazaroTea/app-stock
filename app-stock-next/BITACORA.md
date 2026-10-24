@@ -335,9 +335,31 @@ versión publicada que no queda ningún bloqueo, solo el aviso "queda en −N").
 Benavidez: −2 Goya, +2 Benavidez; entrada de proveedor y salida a cliente sin cambios) y los desplegables en
 pantalla, sin guardar nada en la base. Compila sin errores.
 
+## 2026-10-24: Movimiento y Ajuste
+
+**Pedido:** en vez de Entrada / Salida / Pase, dos tipos: **Movimiento** (resta en el punto de partida y suma
+en el de llegada) y **Ajuste**. Partida: Palma Sola, Goya, Pilar, Benavidez, Proveedor. Llegada: las mismas más
+Cliente. Los stocks que se controlan son solo Goya, Pilar y Benavidez.
+
+**Qué se hizo**
+- `TIPOS` = Movimiento y Ajuste. Reglas en `lib/stock.ts` (`PARTIDAS`, `LLEGADAS`, `efectos`): un movimiento
+  resta en la partida y suma en la llegada solo si son depósitos. Partida y llegada son obligatorias; al menos
+  una tiene que ser un depósito (si no, no cambiaría ningún stock) y no pueden ser el mismo depósito.
+- Base: la app cambió sola la restricción de tipos y convirtió los remitos viejos a "Movimiento" sin tocar sus
+  movimientos. Había uno solo, del vivero: el 000001 (Benavidez → Pilar, 2 olivos), que quedó igual.
+- Sugerencias: un proveedor puede estar en la partida o en la llegada (devolución), y un cliente en la llegada.
+- Remito impreso: "Tipo", "Punto de partida" y "Punto de llegada". Últimos: + en verde, − en rojo.
+
+**Probado** contra la base real: Proveedor → Cliente no deja guardar; Proveedor → Goya (+1 en Goya) y
+Goya → Palma Sola (−3 en Goya, Palma Sola sin stock) dieron Goya −2; el remito 000001 se ve como Movimiento.
+Los dos remitos de prueba se borraron (el próximo es el 000002). Compila sin errores.
+
+**Ojo:** hasta que se suba este código, la versión publicada no puede guardar remitos (la base ya no acepta
+los tipos viejos).
+
 **Pendiente**
 - [ ] Más adelante: revisar si se vuelve a limitar por stock (el usuario lo quiere probar después).
-- [ ] Revisión del listado de especies (árboles, palmeras y frutales) por alguien del vivero.
+- [ ] Listado de especies: por ahora está bien (el usuario lo dio por correcto el 2026-10-24); quizás se retome.
 - [ ] ¿Sumar las otras especies exóticas de la planilla de cotizaciones y de la web (fresnos, liquidámbar,
       olivo, etc.)?
 - [ ] Subir estos cambios a GitHub y confirmar que Vercel la publica sin error.

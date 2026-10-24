@@ -269,9 +269,10 @@ th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--borde); 
 thead th { background: var(--oliva); color: var(--blanco); font-weight: 500; font-size: .8rem; border-bottom: 0; }
 tbody tr:last-child td { border-bottom: 0; }
 .num { text-align: right; white-space: nowrap; }
-.tipo-Salida { color: var(--rojo); }
-.tipo-Entrada { color: var(--verde); font-weight: 600; }
-.tipo-Pase { color: var(--verde-oscuro); font-style: italic; }
+.tipo-Movimiento { color: var(--verde-oscuro); }
+.tipo-Ajuste { color: var(--gris); font-style: italic; }
+/* En Últimos, lo que suma va en verde y lo que resta en rojo. */
+td.num.suma { color: var(--verde); font-weight: 600; }
 
 /* En el celu la tabla se achica y esconde la columna Responsable. */
 @media (max-width: 480px) {

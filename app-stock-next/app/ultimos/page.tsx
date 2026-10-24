@@ -42,7 +42,7 @@ export default async function PaginaUltimos() {
                 <td className="solo-ancho">
                   {m.presentacion} {etiquetaTamano(m.tamano, m.tamanoDetalle)}
                 </td>
-                <td className={m.cantidad < 0 ? 'num negativo' : 'num'}>
+                <td className={m.cantidad < 0 ? 'num negativo' : 'num suma'}>
                   {m.cantidad > 0 ? `+${m.cantidad}` : m.cantidad}
                 </td>
                 <td className="solo-ancho">{m.responsable}</td>

@@ -98,7 +98,7 @@ async function crearTablas() {
     sql`CREATE TABLE IF NOT EXISTS remitos (
       id serial PRIMARY KEY,
       fecha date NOT NULL,
-      tipo text NOT NULL CHECK (tipo IN ('Entrada', 'Salida', 'Pase', 'Ajuste')),
+      tipo text NOT NULL CONSTRAINT remitos_tipo_check CHECK (tipo IN ('Movimiento', 'Ajuste')),
       procedencia text NOT NULL DEFAULT '',
       procedencia_detalle text NOT NULL DEFAULT '',
       destino text NOT NULL DEFAULT '',
@@ -108,6 +108,18 @@ async function crearTablas() {
       observaciones text NOT NULL DEFAULT '',
       registrado timestamptz NOT NULL DEFAULT now()
     )`,
+    // Cambio del 2026-10-24: los tipos Entrada, Salida y Pase pasaron a ser uno solo, "Movimiento" (de un punto
+    // de partida a uno de llegada). Los remitos viejos se convierten sin tocar sus movimientos, que ya restan y
+    // suman en el depósito que corresponde. Solo pasa una vez.
+    sql`DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                       WHERE conname = 'remitos_tipo_check' AND pg_get_constraintdef(oid) LIKE '%Movimiento%') THEN
+          ALTER TABLE remitos DROP CONSTRAINT IF EXISTS remitos_tipo_check;
+          UPDATE remitos SET tipo = 'Movimiento' WHERE tipo IN ('Entrada', 'Salida', 'Pase');
+          ALTER TABLE remitos ADD CONSTRAINT remitos_tipo_check CHECK (tipo IN ('Movimiento', 'Ajuste'));
+        END IF;
+      END $$`,
     // Cada línea del remito genera uno o dos movimientos: lo que suma (+) o resta (-) en un depósito.
     // "linea" es el número de línea dentro del remito (en un pase, los dos movimientos tienen la misma).
     sql`CREATE TABLE IF NOT EXISTS movimientos (
@@ -214,10 +226,15 @@ export async function leerSugerencias(): Promise<Sugerencias> {
   const [destinatarios, proveedores, clientes] = await Promise.all([
     sql`SELECT destinatario AS nombre FROM remitos WHERE destinatario <> ''
         GROUP BY destinatario ORDER BY max(id) DESC LIMIT 200`,
-    sql`SELECT procedencia_detalle AS nombre FROM remitos WHERE procedencia = 'Proveedor' AND procedencia_detalle <> ''
-        GROUP BY procedencia_detalle ORDER BY max(id) DESC LIMIT 200`,
-    sql`SELECT destino_detalle AS nombre FROM remitos WHERE destino = 'Cliente' AND destino_detalle <> ''
-        GROUP BY destino_detalle ORDER BY max(id) DESC LIMIT 200`,
+    // Un proveedor puede estar en la partida (compra) o en la llegada (devolución); un cliente, en la llegada.
+    sql`SELECT nombre FROM (
+          SELECT procedencia_detalle AS nombre, id FROM remitos WHERE procedencia = 'Proveedor'
+          UNION ALL SELECT destino_detalle, id FROM remitos WHERE destino = 'Proveedor'
+        ) x WHERE nombre <> '' GROUP BY nombre ORDER BY max(id) DESC LIMIT 200`,
+    sql`SELECT nombre FROM (
+          SELECT destino_detalle AS nombre, id FROM remitos WHERE destino = 'Cliente'
+          UNION ALL SELECT procedencia_detalle, id FROM remitos WHERE procedencia = 'Cliente'
+        ) x WHERE nombre <> '' GROUP BY nombre ORDER BY max(id) DESC LIMIT 200`,
   ]);
   const nombres = (filas: Record<string, unknown>[]) => filas.map(f => String(f.nombre));
   return { destinatarios: nombres(destinatarios), proveedores: nombres(proveedores), clientes: nombres(clientes) };

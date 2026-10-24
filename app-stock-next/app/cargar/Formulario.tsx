@@ -21,11 +21,8 @@ import type { Sugerencias } from '@/lib/almacen';
 import { TIPOS, type Especie, type LineaRemito, type StockPorDeposito, type TipoMovimiento } from '@/lib/tipos';
 
 const AYUDAS: Record<TipoMovimiento, string> = {
-  Entrada:
-    'Plantas que ingresan a un depósito: de un proveedor, de Palma Sola o de otro depósito (en ese caso se restan allá).',
-  Salida:
-    'Plantas que salen de un depósito: a clientes, a Palma Sola, pérdidas, o a otro depósito (en ese caso se suman allá).',
-  Pase: 'Plantas que pasan de un depósito a otro: se restan en el de origen y se suman en el de destino.',
+  Movimiento:
+    'Plantas que van de un lugar a otro: se restan en el punto de partida y se suman en el de llegada, si son depósitos (Palma Sola, proveedores y clientes no llevan stock).',
   Ajuste: 'Para corregir un depósito después de un conteo: positivo si sobran, negativo (ej. -3) si faltan.',
 };
 
@@ -51,7 +48,7 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
   const [resultado, enviar, guardando] = useActionState(registrarRemito, null);
 
   // Datos del remito
-  const [tipo, setTipo] = useState<TipoMovimiento>('Entrada');
+  const [tipo, setTipo] = useState<TipoMovimiento>('Movimiento');
   const [fecha, setFecha] = useState(hoy);
   const [destinatario, setDestinatario] = useState('');
   const [procedencia, setProcedencia] = useState('');
@@ -229,12 +226,14 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
       : faltaLugar(reglas.destino, destino)
         ? `Elegí el ${reglas.destino?.titulo.toLowerCase()}.`
         : faltaNombre(procedencia, procedenciaDetalle)
-          ? 'Falta escribir qué proveedor es.'
+          ? `Falta escribir qué ${procedencia.toLowerCase()} es (punto de partida).`
           : faltaNombre(destino, destinoDetalle)
-            ? 'Falta escribir qué cliente es.'
+            ? `Falta escribir qué ${destino.toLowerCase()} es (punto de llegada).`
             : DEPOSITOS.includes(procedencia) && procedencia === destino
-              ? 'El depósito de origen y el de destino tienen que ser distintos.'
-              : '';
+              ? 'El punto de partida y el de llegada tienen que ser distintos.'
+              : tipo === 'Movimiento' && procedencia && destino && depositos.length === 0
+                ? 'El punto de partida o el de llegada tiene que ser un depósito (Goya, Pilar o Benavidez).'
+                : '';
 
   return (
     <div className="cargar">
@@ -274,7 +273,7 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
               detalle={procedenciaDetalle}
               onLugar={setProcedencia}
               onDetalle={setProcedenciaDetalle}
-              sugeridos={sugerencias.proveedores}
+              sugeridos={procedencia === 'Cliente' ? sugerencias.clientes : sugerencias.proveedores}
             />
           )}
           {reglas.destino && (
@@ -285,7 +284,7 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
               detalle={destinoDetalle}
               onLugar={setDestino}
               onDetalle={setDestinoDetalle}
-              sugeridos={sugerencias.clientes}
+              sugeridos={destino === 'Proveedor' ? sugerencias.proveedores : sugerencias.clientes}
             />
           )}
         </div>

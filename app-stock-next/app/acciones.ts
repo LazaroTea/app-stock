@@ -70,7 +70,11 @@ export async function registrarRemito(_anterior: Resultado | null, remito: Remit
   const destino = revisarLugar(reglas.destino, remito.destino, remito.destinoDetalle);
   if (typeof destino === 'string') return { ok: false, mensaje: destino };
   if (DEPOSITOS.includes(procedencia.lugar) && procedencia.lugar === destino.lugar) {
-    return { ok: false, mensaje: 'El depósito de origen y el de destino tienen que ser distintos.' };
+    return { ok: false, mensaje: 'El punto de partida y el de llegada tienen que ser distintos.' };
+  }
+  // Si ni la partida ni la llegada son depósitos, el movimiento no cambiaría ningún stock.
+  if (tipo === 'Movimiento' && !DEPOSITOS.includes(procedencia.lugar) && !DEPOSITOS.includes(destino.lugar)) {
+    return { ok: false, mensaje: 'El punto de partida o el de llegada tiene que ser un depósito (Goya, Pilar o Benavidez).' };
   }
 
   try {
@@ -114,7 +118,7 @@ export async function registrarRemito(_anterior: Resultado | null, remito: Remit
     return {
       ok: true,
       numero,
-      mensaje: `Remito N.º ${numeroRemito(numero)} guardado: ${lineas.length} ${lineas.length === 1 ? 'línea' : 'líneas'}, ${plantas} plantas.`,
+      mensaje: `Remito N.º ${numeroRemito(numero)} guardado: ${lineas.length} ${lineas.length === 1 ? 'línea' : 'líneas'}, ${plantas} ${plantas === 1 ? 'planta' : 'plantas'}.`,
     };
   } catch (e) {
     console.error('Error al guardar el remito:', e);
