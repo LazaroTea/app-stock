@@ -521,3 +521,15 @@ depósitos); el menú abre, y Salir cierra la sesión. Celu sin desbordes. Compi
 - [ ] Cambiar la contraseña de la base en Neon (la hace el usuario, con la guía del README).
 - [ ] Más adelante: revisar si se vuelve a limitar por stock (el usuario lo quiere probar después).
 - [ ] Listado de especies: por ahora está bien; quizás se retome.
+
+## 2026-10-26: Stock como listado
+
+**Pedido:** que las plantas de la pantalla Stock se vean más como un listado, con los detalles al costado.
+
+**Qué se hizo:** las tarjetas pasaron a un **listado de una fila por especie**: a la izquierda el nombre (con
+nombre científico, código y región), al costado el detalle (stock por depósito con "Todos", y presentaciones y
+tamaños) y a la derecha el total. En el celu el detalle va debajo del nombre y el total queda arriba a la
+derecha. Las especies bajo el mínimo tienen una marca roja a la izquierda y el aviso en el detalle. No cambió
+ningún dato ni cuenta, solo cómo se ve.
+
+**Probado** en compu (1024 px) y celu (375 px) con la base real, sin desbordes. Compila sin errores.

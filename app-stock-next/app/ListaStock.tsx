@@ -112,7 +112,8 @@ export default function ListaStock({ especies, presentaciones, tamanos, stock: p
         ) : (
           <p className="resumen">No hay especies que coincidan.</p>
         ))}
-      <div className="grilla">
+      {/* Una fila por especie: el nombre a la izquierda, el detalle al costado y el total a la derecha. */}
+      <div className="lista-especies">
         {lista.map(e => {
           const bajo = bajoMinimo(stock, e);
           const total = totalEspecie(stock, e.codigo);
@@ -122,43 +123,43 @@ export default function ListaStock({ especies, presentaciones, tamanos, stock: p
             ([, n]) => n !== 0,
           );
           return (
-            <div key={e.codigo} className={bajo ? 'tarjeta bajo' : porPresentacion.length ? 'tarjeta' : 'tarjeta sin-stock'}>
-              <div className="fila">
-                <div>
-                  <div className="nombre">{e.comun}</div>
-                  <div className="cientifico">
-                    {e.cientifico} · {e.codigo}
-                  </div>
-                  <div className="region">
-                    {e.grupo !== 'Árbol' && (
-                      <span className="etiqueta" title="Especie priorizada por SENASA (Res. 64/2026)">
-                        {e.grupo}
-                      </span>
-                    )}
-                    {e.region}
-                  </div>
+            <div key={e.codigo} className={bajo ? 'especie bajo' : porPresentacion.length ? 'especie' : 'especie sin-stock'}>
+              <div className="especie-nombre">
+                <div className="nombre">{e.comun}</div>
+                <div className="cientifico">
+                  {e.cientifico} · {e.codigo}
                 </div>
-                <div className={total < 0 ? 'total negativo' : 'total'}>{total}</div>
+                <div className="region">
+                  {e.grupo !== 'Árbol' && (
+                    <span className="etiqueta" title="Especie priorizada por SENASA (Res. 64/2026)">
+                      {e.grupo}
+                    </span>
+                  )}
+                  {e.region}
+                </div>
               </div>
-              {bajo && <div className="aviso">Por debajo del mínimo ({e.minimo})</div>}
-              {!deposito && porDepositoEspecie.length > 0 && (
-                <div className="por-deposito">
-                  {porDepositoEspecie.map(([d, n]) => (
-                    <span key={d} className={n < 0 ? 'negativo' : undefined}>
-                      {d}: <b>{n}</b>
-                    </span>
-                  ))}
-                </div>
-              )}
-              {porPresentacion.length > 0 && (
-                <div className="presentaciones">
-                  {porPresentacion.map(([t, n]) => (
-                    <span key={t} className={n < 0 ? 'chip negativo' : 'chip'}>
-                      {t}: <b>{n}</b>
-                    </span>
-                  ))}
-                </div>
-              )}
+              <div className="especie-detalle">
+                {bajo && <div className="aviso">Por debajo del mínimo ({e.minimo})</div>}
+                {!deposito && porDepositoEspecie.length > 0 && (
+                  <div className="por-deposito">
+                    {porDepositoEspecie.map(([d, n]) => (
+                      <span key={d} className={n < 0 ? 'negativo' : undefined}>
+                        {d}: <b>{n}</b>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {porPresentacion.length > 0 && (
+                  <div className="presentaciones">
+                    {porPresentacion.map(([t, n]) => (
+                      <span key={t} className={n < 0 ? 'chip negativo' : 'chip'}>
+                        {t}: <b>{n}</b>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className={total < 0 ? 'total negativo' : 'total'}>{total}</div>
             </div>
           );
         })}
