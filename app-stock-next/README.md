@@ -63,7 +63,6 @@ Usa la identidad de la marca Native (de nativetrees.com.ar y de los presupuestos
   Google Fonts al compilar.
 - **Logo:** `public/logo-native.png` (el de la web, en crema, sobre el encabezado verde) y
   `public/icono-native.png` (el árbol solo). El ícono de la pestaña del navegador es `app/icon.svg`.
-- En la compu, el encabezado muestra el lema "Movemos naturaleza. Creamos paisaje".
 
 Los colores están todos juntos al principio de `app/globals.css`: para cambiar uno, se cambia ahí.
 

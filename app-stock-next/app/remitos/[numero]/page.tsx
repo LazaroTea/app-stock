@@ -70,7 +70,6 @@ export default async function PaginaRemito({ params }: Props) {
         <div className="documento-cabecera">
           <div>
             <img src="/logo-native-verde.png" alt="Native" className="documento-logo" width={713} height={212} />
-            <div className="documento-lema">{EMPRESA.lema}</div>
           </div>
           <div className="documento-titulo">
             <h1>Remito</h1>

@@ -6,5 +6,4 @@ export const EMPRESA = {
   mail: 'ventas@nativetrees.com.ar',
   telefono: '(54) 9 11 5420-6122',
   direccion: 'Bartolomé Mitre 689, Goya, Corrientes. CP: 3450',
-  lema: 'Movemos naturaleza. Creamos paisaje',
 };

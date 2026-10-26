@@ -4,7 +4,7 @@
    Se diseñó primero para el celu y después se agrega lo de pantallas más grandes:
    - hasta 639px: celu (navegación abajo, una columna)
    - desde 640px: tablet (navegación arriba, dos columnas)
-   - desde 1024px: compu (grilla de tres columnas, lema de la marca y el remito al costado en Cargar) */
+   - desde 1024px: compu (grilla de tres columnas y el remito al costado en Cargar) */
 
 :root {
   /* Colores de la marca */
@@ -49,7 +49,6 @@ header { background: var(--verde); color: var(--crema); }
 .encabezado { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; }
 .marca { display: flex; align-items: center; gap: 10px; }
 .logo { display: block; height: 28px; width: auto; }
-.lema { display: none; }
 
 /* Quién inició sesión, arriba a la derecha: tocándolo se abre el menú con Mi clave y Salir. */
 .usuario { position: relative; }
@@ -336,7 +335,6 @@ tr.anulado td.estado { text-decoration: none; }
 }
 .documento-cabecera { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
 .documento-logo { display: block; width: 210px; height: auto; }
-.documento-lema { color: var(--verde-oscuro); font-size: .62rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; margin-top: 6px; }
 .documento-titulo { text-align: right; color: var(--verde-oscuro); }
 .documento-titulo h1 { margin: 0; font-size: 2rem; letter-spacing: .02em; text-transform: uppercase; }
 .documento-titulo div { font-weight: 700; font-size: .85rem; }
@@ -435,14 +433,6 @@ td.num.suma { color: var(--verde); font-weight: 600; }
 }
 
 /* ---------- Compu: desde 1024px ---------- */
-
-/* El lema, solo en pantallas anchas: en 1024 px no entra junto a las pestañas y el usuario. */
-@media (min-width: 1280px) {
-  .lema {
-    display: block; font-family: var(--fuente-titulos), sans-serif; font-size: .68rem; font-weight: 600;
-    letter-spacing: .1em; text-transform: uppercase; opacity: .85; white-space: nowrap;
-  }
-}
 
 @media (min-width: 1024px) {
 

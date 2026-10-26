@@ -642,3 +642,13 @@
 `- [ ] Cambiar la contraseña de la base en Neon (la hace el usuario, con la guía del README).
 `- [ ] Más adelante: revisar si se vuelve a limitar por stock (el usuario lo quiere probar después).
 `- [ ] Listado de especies: por ahora está bien; quizás se retome.
+
+## 2026-10-26: se saca el lema del encabezado
+
+**Pedido:** retirar la frase "Movemos naturaleza. Creamos paisaje".
+
+**Qué se hizo:** se sacó del encabezado de la app y también del remito impreso (debajo del logo), junto con
+sus estilos, el dato `lema` de `lib/empresa.ts` y la mención en el README. Si algún día se quiere volver a poner,
+se agrega `lema` en `lib/empresa.ts` y se muestra en `app/remitos/[numero]/page.tsx`.
+
+**Probado:** compila sin errores. No se revisó a ojo en pantalla.

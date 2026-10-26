@@ -36,7 +36,6 @@ export default async function Layout({ children }: { children: React.ReactNode }
             {/* En el celu la navegación va abajo (ver globals.css); en pantallas grandes, acá arriba. */}
             {/* Con clave provisoria no hay pestañas: primero tiene que cambiarla. */}
             {usuario && !usuario.cambiarClave && <Navegacion usuarios={puedeAdministrarUsuarios(usuario)} />}
-            <span className="lema">Movemos naturaleza. Creamos paisaje</span>
             {usuario && <MenuUsuario nombre={usuario.nombre} rol={usuario.rol} />}
           </div>
         </header>
