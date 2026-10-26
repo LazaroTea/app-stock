@@ -107,7 +107,8 @@ async function revisarRemito(remito: RemitoEnviado, responsable: string): Promis
   return {
     tipo,
     fecha,
-    destinatario: limpiar(remito.destinatario),
+    // Quién recibe va con el punto de llegada: en un ajuste no hay.
+    destinatario: tipo === 'Ajuste' ? '' : limpiar(remito.destinatario),
     procedencia: procedencia.lugar,
     procedenciaDetalle: procedencia.detalle,
     destino: destino.lugar,

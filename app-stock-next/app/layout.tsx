@@ -1,10 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import { Montserrat, Raleway } from 'next/font/google';
-import Link from 'next/link';
 import { puedeAdministrarUsuarios } from '@/lib/permisos';
 import { usuarioActual } from '@/lib/sesion';
+import MenuUsuario from './MenuUsuario';
 import Navegacion from './Navegacion';
-import { cerrarSesion } from './sesion';
 import './globals.css';
 
 // Tipografías de la marca Native (las mismas de nativetrees.com.ar y de los presupuestos):
@@ -29,22 +28,12 @@ export default async function Layout({ children }: { children: React.ReactNode }
             <div className="marca">
               {/* Logo de nativetrees.com.ar (en color crema, para ir sobre el verde de la marca). */}
               <img src="/logo-native.png" alt="Native" className="logo" width={713} height={212} />
-              <span className="titulo-app">Stock</span>
             </div>
             {/* En el celu la navegación va abajo (ver globals.css); en pantallas grandes, acá arriba. */}
             {/* Con clave provisoria no hay pestañas: primero tiene que cambiarla. */}
             {usuario && !usuario.cambiarClave && <Navegacion usuarios={puedeAdministrarUsuarios(usuario)} />}
             <span className="lema">Movemos naturaleza. Creamos paisaje</span>
-            {usuario && (
-              <form action={cerrarSesion} className="usuario">
-                {/* Tocando el nombre se cambia la clave propia. */}
-                <Link href="/clave" className="usuario-nombre" title="Cambiar mi clave">
-                  {usuario.nombre}
-                  <small>{usuario.rol} · Mi clave</small>
-                </Link>
-                <button type="submit" className="salir">Salir</button>
-              </form>
-            )}
+            {usuario && <MenuUsuario nombre={usuario.nombre} rol={usuario.rol} />}
           </div>
         </header>
         <main className="contenedor">{children}</main>

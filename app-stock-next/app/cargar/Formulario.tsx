@@ -318,7 +318,29 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
               onLugar={setDestino}
               onDetalle={setDestinoDetalle}
               sugeridos={destino === 'Proveedor' ? sugerencias.proveedores : sugerencias.clientes}
-            />
+            >
+              {/* El destinatario va con el punto de llegada (en un ajuste no hay a quién entregar). */}
+              {tipo === 'Movimiento' && (
+                <>
+                  <label htmlFor="destinatario">
+                    Quién recibe <span className="opcional">(opcional)</span>
+                  </label>
+                  <input
+                    id="destinatario"
+                    list="lista-destinatarios"
+                    placeholder="Persona o contacto"
+                    maxLength={100}
+                    value={destinatario}
+                    onChange={e => setDestinatario(e.target.value)}
+                  />
+                  <datalist id="lista-destinatarios">
+                    {sugerencias.destinatarios.map(d => (
+                      <option key={d} value={d} />
+                    ))}
+                  </datalist>
+                </>
+              )}
+            </CampoLugar>
           )}
         </div>
 
@@ -332,23 +354,6 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
             <input id="responsable" value={responsable} readOnly />
           </div>
         </div>
-
-        <label htmlFor="destinatario">
-          Destinatario <span className="opcional">(opcional)</span>
-        </label>
-        <input
-          id="destinatario"
-          list="lista-destinatarios"
-          placeholder="Persona o contacto que recibe"
-          maxLength={100}
-          value={destinatario}
-          onChange={e => setDestinatario(e.target.value)}
-        />
-        <datalist id="lista-destinatarios">
-          {sugerencias.destinatarios.map(d => (
-            <option key={d} value={d} />
-          ))}
-        </datalist>
 
         <label htmlFor="observaciones">Observaciones</label>
         <textarea
@@ -474,7 +479,7 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
             <div>{fecha ? fechaLegible(fecha) : ''}</div>
           </div>
         </div>
-        {(procedencia || destino || destinatario || responsable) && (
+        {(procedencia || destino || responsable) && (
           <div className="remito-extra">
             {reglas.procedencia && procedencia && (
               <div>
@@ -484,9 +489,9 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
             {reglas.destino && destino && (
               <div>
                 {reglas.destino.titulo}: {etiquetaLugar(destino, limpiar(destinoDetalle))}
+                {tipo === 'Movimiento' && limpiar(destinatario) && ` · recibe ${limpiar(destinatario)}`}
               </div>
             )}
-            {destinatario && <div className="remito-destinatario">Destinatario: {destinatario}</div>}
             {responsable && <div>Responsable: {responsable}</div>}
           </div>
         )}
@@ -584,11 +589,13 @@ interface PropsLugar {
   onDetalle: (valor: string) => void;
   /** Nombres ya usados de proveedores o clientes, para sugerirlos. */
   sugeridos: string[];
+  /** Lo que va debajo del lugar (en el punto de llegada: quién recibe). */
+  children?: React.ReactNode;
 }
 
 // Un lugar (procedencia, destino o depósito) con las opciones que corresponden al tipo de movimiento.
 // Si se elige "Proveedor" o "Cliente", aparece un renglón para escribir cuál.
-function CampoLugar({ id, regla, lugar, detalle, onLugar, onDetalle, sugeridos }: PropsLugar) {
+function CampoLugar({ id, regla, lugar, detalle, onLugar, onDetalle, sugeridos, children }: PropsLugar) {
   const especificar = LUGARES_A_ESPECIFICAR.includes(lugar);
   return (
     <div>
@@ -623,6 +630,7 @@ function CampoLugar({ id, regla, lugar, detalle, onLugar, onDetalle, sugeridos }
           </datalist>
         </>
       )}
+      {children}
     </div>
   );
 }

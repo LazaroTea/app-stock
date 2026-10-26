@@ -14,7 +14,7 @@ import { neon } from '@neondatabase/serverless';
 import { encriptarClave } from './claves';
 import { ESPECIES } from './especies';
 import { claveStock, efectos, etiquetaTamano, TAMANO_A_ESPECIFICAR } from './stock';
-import type { Especie, LineaRemito, Movimiento, Rol, StockPorDeposito, TipoMovimiento, Usuario } from './tipos';
+import type { Especie, LineaRemito, Rol, StockPorDeposito, TipoMovimiento, Usuario } from './tipos';
 
 /**
  * Usuarios iniciales (2026-10-24). Todos arrancan con la clave "1234": es provisoria, mientras se definen los
@@ -252,17 +252,41 @@ export async function leerStock(): Promise<StockPorDeposito> {
 }
 
 /** Los últimos movimientos (los más nuevos primero) y cuántos hay en total. */
-export async function leerUltimos(cantidad: number): Promise<{ movimientos: Movimiento[]; total: number }> {
+/** Un remito en la lista de Últimos: sus datos y cuántas líneas y plantas tiene (el detalle se ve al abrirlo). */
+export interface RemitoResumen {
+  numero: number;
+  fecha: string;
+  tipo: TipoMovimiento;
+  procedencia: string;
+  procedenciaDetalle: string;
+  destino: string;
+  destinoDetalle: string;
+  destinatario: string;
+  responsable: string;
+  anulado: boolean;
+  lineas: number;
+  /** Total de plantas (en un ajuste, con signo: lo que suma o resta). */
+  plantas: number;
+}
+
+/** Los últimos remitos (los más nuevos primero) y cuántos hay en total. */
+export async function leerUltimosRemitos(cantidad: number): Promise<{ remitos: RemitoResumen[]; total: number }> {
   await prepararBase();
   const sql = conexion();
   const [filas, [{ total }]] = await Promise.all([
-    sql`SELECT m.id, to_char(r.fecha, 'YYYY-MM-DD') AS fecha, r.tipo, m.deposito, m.codigo, m.presentacion, m.tamano,
-          m.tamano_detalle AS "tamanoDetalle", m.cantidad, r.responsable, r.id AS remito, r.anulado
-        FROM movimientos m JOIN remitos r ON r.id = m.remito_id
-        ORDER BY r.fecha DESC, m.id DESC LIMIT ${cantidad}`,
-    sql`SELECT count(*)::int AS total FROM movimientos`,
+    // En un movimiento entre dos depósitos cada línea tiene dos filas en "movimientos" (−N y +N): por eso las
+    // plantas se cuentan una vez por línea (todas las líneas de un remito tienen la misma cantidad de filas).
+    sql`SELECT r.id AS numero, to_char(r.fecha, 'YYYY-MM-DD') AS fecha, r.tipo,
+          r.procedencia, r.procedencia_detalle AS "procedenciaDetalle", r.destino, r.destino_detalle AS "destinoDetalle",
+          r.destinatario, r.responsable, r.anulado,
+          count(DISTINCT m.linea)::int AS lineas,
+          coalesce(CASE WHEN r.tipo = 'Ajuste' THEN sum(m.cantidad)
+                        ELSE sum(abs(m.cantidad)) * count(DISTINCT m.linea) / nullif(count(m.id), 0) END, 0)::int AS plantas
+        FROM remitos r LEFT JOIN movimientos m ON m.remito_id = r.id
+        GROUP BY r.id ORDER BY r.fecha DESC, r.id DESC LIMIT ${cantidad}`,
+    sql`SELECT count(*)::int AS total FROM remitos`,
   ]);
-  return { movimientos: filas as Movimiento[], total };
+  return { remitos: filas as RemitoResumen[], total };
 }
 
 export interface RemitoNuevo {

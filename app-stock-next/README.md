@@ -70,7 +70,7 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 ## Cómo se usa
 
 - **Ingresar:** al abrir la app se elige el **nombre** y se escribe la **clave**. La sesión queda abierta 30
-  días en ese dispositivo (celu o compu). Arriba a la derecha se ve quién ingresó, su rol y el botón **Salir**.
+  días en ese dispositivo (celu o compu). Arriba a la derecha se ve quién ingresó y su rol; tocándolo se abre un menú con **Mi clave** y **Salir**.
 
   | Usuario | Rol | Qué puede hacer |
   |---|---|---|
@@ -81,7 +81,7 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
   provisoria, la app pide elegir una propia antes de dejar hacer cualquier otra cosa.
 - **Reglas de la clave:** al menos 8 letras o números, que no tenga el nombre de la persona, que no sea una
   clave muy común (12345678, password…) ni el mismo carácter repetido. Se cambian en `lib/claves.ts`.
-- **Cambiar la clave propia:** tocando el nombre arriba a la derecha (**Mi clave**). Pide la clave actual y la
+- **Cambiar la clave propia:** en el menú de arriba a la derecha, **Mi clave**. Pide la clave actual y la
   nueva dos veces. Al cambiarla, se cierran las sesiones abiertas en los demás dispositivos.
 - **Clave equivocada:** después de **5 intentos equivocados seguidos**, el usuario queda bloqueado
   **15 minutos**. Un administrador lo puede desbloquear antes dándole una clave provisoria.
@@ -104,8 +104,9 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
   aparecen también las que no tienen stock.
 - **Cargar** (en formato **remito**):
   1. **Datos del remito:** tipo (**Movimiento** o **Ajuste**), los lugares, fecha, responsable (sale solo: es quien
-     ingresó, y no se puede cambiar),
-     **destinatario** (opcional: persona o contacto que recibe) y observaciones.
+     ingresó, y no se puede cambiar) y observaciones. En un **Movimiento**, debajo del punto de llegada hay un
+     renglón **Quién recibe** (opcional: persona o contacto). En el remito sale en el mismo renglón que el punto
+     de llegada ("Punto de llegada: Cliente (Vivero X) · recibe Juan"). En un Ajuste no aparece.
 
      | Tipo | Punto de partida | Punto de llegada | Qué hace con el stock |
      |---|---|---|---|
@@ -149,9 +150,10 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
   dejan de contar en el stock. Un remito anulado ya no se puede modificar, y no se puede "desanular" desde la app.
 - **Quién puede modificar o anular:** solo los administradores. Se decide en `lib/permisos.ts` (la pantalla
   oculta los botones y el servidor rechaza el pedido aunque alguien lo intente igual).
-- **Últimos:** los últimos 30 movimientos: cada fila es lo que suma (+) o resta (−) en un depósito, con su
-  número de remito (un movimiento entre dos depósitos aparece dos veces, una por depósito). Tocando el número
-  se abre el remito, para verlo, imprimirlo, modificarlo o anularlo. Los de remitos anulados se ven tachados.
+- **Últimos:** una fila por **remito** (los 50 más nuevos), sin el desglose de las plantas: fecha, número, tipo,
+  recorrido (ej. "Goya → Pilar"; en un ajuste, "Ajuste en Goya"), quién recibe, total de plantas y cantidad de
+  líneas, y responsable. Tocando el remito se abre con todo el detalle, para verlo, imprimirlo, modificarlo o
+  anularlo. Los anulados se ven tachados.
 
 | Pantalla | Cómo se acomoda |
 |---|---|
@@ -174,9 +176,9 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 | `app/usuarios/` | Pantalla **Usuarios** (solo administradores) y lo que pasa en el servidor desde ahí. |
 | `lib/empresa.ts` | Los datos de Native que salen en el remito impreso. |
 | `app/not-found.tsx` | Lo que se ve si se entra a algo que no existe. |
-| `app/ultimos/page.tsx` | Pantalla **Últimos**: los últimos 30 movimientos. |
+| `app/ultimos/page.tsx` | Pantalla **Últimos**: los últimos 50 remitos, una fila cada uno. |
 | `app/acciones.ts` | Lo que pasa en el servidor al guardar un remito (revisa cada línea otra vez). |
-| `app/layout.tsx`, `app/Navegacion.tsx` | Encabezado y pestañas. |
+| `app/layout.tsx`, `app/Navegacion.tsx`, `app/MenuUsuario.tsx` | Encabezado, pestañas y el menú del usuario (Mi clave y Salir). |
 | `app/globals.css` | Colores de la marca, estilos y cómo se acomoda en celu, tablet y compu. |
 | `public/`, `app/icon.svg` | Logo de Native (crema para la app, verde para el remito impreso) y el ícono de la pestaña. |
 | `lib/stock.ts` | Reglas del stock (las salidas restan, etc.) y ayudas para la pantalla. |

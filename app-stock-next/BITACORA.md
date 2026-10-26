@@ -492,3 +492,32 @@ espacio y la clave no). Ahora se revisa cada palabra del nombre.
 **Qué se hizo:** se cambió su rol en la base (rige al instante, también en la app publicada). Para que todo
 coincida, también se cambió en la lista de usuarios iniciales (`lib/almacen.ts`) y en el README. Ahora los
 administradores son Gustavo, Rocío y Martina. Más adelante, esto se puede hacer desde la pantalla **Usuarios**.
+
+## 2026-10-26: quién recibe con el punto de llegada, Últimos por remito y menú del usuario
+
+**Pedido:** (1) fusionar el destinatario con el punto de llegada; (2) que Últimos no muestre el desglose, solo
+los remitos, y que se pueda entrar a cada uno para ver el detalle; (3) sacar el "Stock" que estaba al lado del
+logo, y que el usuario de arriba a la derecha sea un menú desplegable con "Mi clave" y "Salir".
+
+**Decisiones**
+- **Quién recibe** (antes "Destinatario") pasó a estar **debajo del punto de llegada**, solo en los
+  Movimientos (en un Ajuste no hay a quién entregar). En el remito sale en el mismo renglón que el punto de
+  llegada: "Punto de llegada: Cliente (Vivero X) · recibe Juan". En la base sigue la misma columna
+  (`destinatario`), así que los remitos viejos no cambian; si alguno tiene destinatario y no tiene punto de
+  llegada, se sigue mostrando aparte.
+- **Últimos** ahora lista **remitos** (50 por vez), no movimientos de stock: fecha, número, tipo, recorrido,
+  quién recibe, plantas, líneas y responsable. Tocando el número o el recorrido se abre el remito. Antes
+  un movimiento entre depósitos ocupaba dos filas por línea.
+- **Menú del usuario:** nombre y rol arriba a la derecha; al tocarlo se abre un menú con **Mi clave** y **Salir**
+  (se cierra al tocar afuera, con Escape o al cambiar de pantalla).
+- Se sacó el rótulo "Stock" junto al logo (repetía la pestaña).
+
+**Probado** contra la base real con un usuario y un remito de prueba (ya borrados; el próximo remito es el
+000003): Quién recibe aparece solo en Movimiento, el resumen del remito, el remito impreso y la fila de Últimos
+muestran "recibe Juan"; Últimos cuenta bien las plantas (+40 el ajuste de 4 líneas, 2 el movimiento entre
+depósitos); el menú abre, y Salir cierra la sesión. Celu sin desbordes. Compila sin errores.
+
+**Pendiente**
+- [ ] Cambiar la contraseña de la base en Neon (la hace el usuario, con la guía del README).
+- [ ] Más adelante: revisar si se vuelve a limitar por stock (el usuario lo quiere probar después).
+- [ ] Listado de especies: por ahora está bien; quizás se retome.

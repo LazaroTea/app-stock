@@ -101,9 +101,12 @@ export default async function PaginaRemito({ params }: Props) {
           {reglas.destino && remito.destino && (
             <div>
               <span>{reglas.destino.titulo}:</span> {etiquetaLugar(remito.destino, remito.destinoDetalle)}
+              {/* Quién recibe va en el mismo renglón que el punto de llegada. */}
+              {remito.destinatario && ` · recibe ${remito.destinatario}`}
             </div>
           )}
-          {remito.destinatario && (
+          {/* Remitos viejos con destinatario y sin punto de llegada: se muestra aparte. */}
+          {remito.destinatario && !(reglas.destino && remito.destino) && (
             <div>
               <span>Destinatario:</span> {remito.destinatario}
             </div>
