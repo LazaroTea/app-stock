@@ -149,6 +149,10 @@ async function crearTablas() {
     // CUIT del proveedor o cliente de la partida y de la llegada (solo números), 2026-10-26.
     sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS procedencia_cuit text NOT NULL DEFAULT ''`,
     sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS destino_cuit text NOT NULL DEFAULT ''`,
+    // Clave de envío: la genera el celu al armar el remito y viaja con él. Si el mismo remito llega dos veces (se
+    // cortó la señal justo después de guardar, o se tocó dos veces el botón), la segunda no lo duplica.
+    sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS clave_envio text`,
+    sql`CREATE UNIQUE INDEX IF NOT EXISTS remitos_clave_envio ON remitos (clave_envio)`,
     // El ingreso a ARCA (ticket) se guarda acá: ARCA no deja pedir uno nuevo mientras hay uno vigente, y en Vercel
     // cada pedido puede caer en un servidor distinto, así que no alcanza con tenerlo en memoria.
     sql`CREATE TABLE IF NOT EXISTS arca_tickets (
@@ -389,15 +393,19 @@ export async function leerRemito(numero: number): Promise<RemitoGuardado | null>
 /**
  * Guarda el remito completo con todos sus movimientos, en una sola operación (todo o nada),
  * y devuelve su número. No controla que alcance el stock: un depósito puede quedar en negativo.
+ * Con "claveEnvio", si ya hay un remito guardado con esa clave no se guarda otro: devuelve el que ya estaba
+ * (repetido = true).
  */
-export async function guardarRemito(r: RemitoNuevo): Promise<number> {
+export async function guardarRemito(r: RemitoNuevo, claveEnvio = ''): Promise<{ numero: number; repetido: boolean }> {
   await prepararBase();
   const movimientos = movimientosDe(r);
   const [resultado] = await conexion().query(
     `WITH remito AS (
        INSERT INTO remitos (fecha, tipo, responsable, observaciones,
-                            procedencia, procedencia_detalle, procedencia_cuit, destino, destino_detalle, destino_cuit)
-       VALUES ($2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                            procedencia, procedencia_detalle, procedencia_cuit, destino, destino_detalle, destino_cuit,
+                            clave_envio)
+       VALUES ($2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NULLIF($12, ''))
+       ON CONFLICT (clave_envio) DO NOTHING
        RETURNING id
      ), guardados AS (
        INSERT INTO movimientos (remito_id, linea, deposito, codigo, presentacion, tamano, tamano_detalle, cantidad)
@@ -412,9 +420,13 @@ export async function guardarRemito(r: RemitoNuevo): Promise<number> {
     [
       movimientos, r.fecha, r.tipo, r.responsable, r.observaciones,
       r.procedencia, r.procedenciaDetalle, r.procedenciaCuit, r.destino, r.destinoDetalle, r.destinoCuit,
+      claveEnvio,
     ],
   );
-  return Number(resultado.numero);
+  if (resultado) return { numero: Number(resultado.numero), repetido: false };
+  // No se insertó nada: ya existía un remito con esa clave de envío.
+  const [existente] = await conexion()`SELECT id FROM remitos WHERE clave_envio = ${claveEnvio}`;
+  return { numero: Number(existente.id), repetido: true };
 }
 
 // Los movimientos (en JSON) que genera un remito: uno o dos por línea, con lo que suma o resta en cada depósito.

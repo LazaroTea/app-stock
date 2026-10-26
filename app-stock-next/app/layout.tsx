@@ -4,6 +4,7 @@ import { puedeAdministrarUsuarios } from '@/lib/permisos';
 import { usuarioActual } from '@/lib/sesion';
 import MenuUsuario from './MenuUsuario';
 import Navegacion from './Navegacion';
+import Sincronizador from './Sincronizador';
 import './globals.css';
 
 // Tipografías de la marca Native (las mismas de nativetrees.com.ar y de los presupuestos):
@@ -14,6 +15,9 @@ const raleway = Raleway({ subsets: ['latin'], weight: ['400', '500', '600', '700
 export const metadata: Metadata = {
   title: 'Stock · Native',
   description: 'Control de stock de Native Trees: árboles nativos y palmeras.',
+  // Ícono al agregar la app a la pantalla de inicio (iPhone).
+  icons: { apple: '/icono-192.png' },
+  appleWebApp: { capable: true, title: 'Stock Native', statusBarStyle: 'default' },
 };
 
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#646945' };
@@ -36,6 +40,12 @@ export default async function Layout({ children }: { children: React.ReactNode }
             {usuario && <MenuUsuario nombre={usuario.nombre} rol={usuario.rol} />}
           </div>
         </header>
+        {/* Sin señal: avisos, remitos pendientes y subida automática. */}
+        {usuario && !usuario.cambiarClave && (
+          <div className="contenedor">
+            <Sincronizador usuario={usuario.nombre} />
+          </div>
+        )}
         <main className="contenedor">{children}</main>
       </body>
     </html>

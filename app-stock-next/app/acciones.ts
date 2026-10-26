@@ -28,9 +28,15 @@ export interface Resultado {
   mensaje: string;
   /** Número del remito guardado, para abrirlo e imprimirlo. */
   numero?: number;
+  /** Por qué no se guardó, cuando no es un error del remito: la sesión se cerró o la base falló (se puede reintentar). */
+  codigo?: 'sin-sesion' | 'temporal';
+  /** Sin señal: el remito quedó guardado en el celu, esperando para subirse (lo agrega la pantalla, no el servidor). */
+  pendiente?: boolean;
 }
 
 export interface RemitoEnviado {
+  /** Identifica este remito para que, si llega dos veces, no se guarde dos veces (ver guardarRemito). */
+  claveEnvio?: string;
   tipo: TipoMovimiento;
   fecha: string;
   procedencia: string;
@@ -144,15 +150,21 @@ const ERROR_BASE = 'No se pudo guardar: hubo un problema con la base de datos. P
 export async function registrarRemito(_anterior: Resultado | null, remito: RemitoEnviado): Promise<Resultado> {
   try {
     const usuario = await usuarioActual();
-    if (!usuario || usuario.cambiarClave) return { ok: false, mensaje: SIN_SESION };
+    if (!usuario || usuario.cambiarClave) return { ok: false, mensaje: SIN_SESION, codigo: 'sin-sesion' };
+    const clave = String(remito.claveEnvio ?? '');
+    if (clave && !/^[A-Za-z0-9_-]{8,64}$/.test(clave)) return { ok: false, mensaje: 'La clave de envío del remito no es válida.' };
     const nuevo = await revisarRemito(remito, usuario.nombre);
     if (typeof nuevo === 'string') return { ok: false, mensaje: nuevo };
-    const numero = await guardarRemito(nuevo);
+    const { numero, repetido } = await guardarRemito(nuevo, clave);
     revalidatePath('/', 'layout');
-    return { ok: true, numero, mensaje: `Remito N.º ${numeroRemito(numero)} guardado: ${resumen(nuevo.lineas)}.` };
+    return {
+      ok: true,
+      numero,
+      mensaje: `Remito N.º ${numeroRemito(numero)} ${repetido ? 'ya estaba guardado' : 'guardado'}: ${resumen(nuevo.lineas)}.`,
+    };
   } catch (e) {
     console.error('Error al guardar el remito:', e);
-    return { ok: false, mensaje: ERROR_BASE };
+    return { ok: false, mensaje: ERROR_BASE, codigo: 'temporal' };
   }
 }
 
@@ -160,7 +172,7 @@ export async function registrarRemito(_anterior: Resultado | null, remito: Remit
 export async function modificarRemito(numero: number, _anterior: Resultado | null, remito: RemitoEnviado): Promise<Resultado> {
   try {
     const usuario = await usuarioActual();
-    if (!usuario || usuario.cambiarClave) return { ok: false, mensaje: SIN_SESION };
+    if (!usuario || usuario.cambiarClave) return { ok: false, mensaje: SIN_SESION, codigo: 'sin-sesion' };
     if (!puedeModificarRemitos(usuario)) return { ok: false, mensaje: 'No tenés permiso para modificar remitos.' };
     // Acá "responsable" es quien modifica: se guarda como modificado_por (ver modificarRemito en lib/almacen.ts).
     const nuevo = await revisarRemito(remito, usuario.nombre);
@@ -183,7 +195,7 @@ export async function anularRemito(numero: number, motivo: string): Promise<Resu
   if (m.length > 200) return { ok: false, mensaje: 'El motivo es muy largo (máximo 200 letras).' };
   try {
     const usuario = await usuarioActual();
-    if (!usuario || usuario.cambiarClave) return { ok: false, mensaje: SIN_SESION };
+    if (!usuario || usuario.cambiarClave) return { ok: false, mensaje: SIN_SESION, codigo: 'sin-sesion' };
     if (!puedeAnularRemitos(usuario)) return { ok: false, mensaje: 'No tenés permiso para anular remitos.' };
     if (!(await marcarAnulado(numero, m, usuario.nombre))) return { ok: false, mensaje: 'El remito no existe o ya estaba anulado.' };
     revalidatePath('/', 'layout');

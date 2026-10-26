@@ -32,3 +32,5 @@ Los mensajes de commit van en español. Subir (push) solo cuando el usuario lo p
   Ojo: la app local usa la misma base que la publicada; borrar lo que se cargue al probar.
   Proveedores y clientes llevan CUIT, con búsqueda del nombre en ARCA (necesita un certificado: ver el README).
   La clave privada de ese certificado está en `app-stock-next/certificados/`: nunca se sube ni se muestra.
+  Funciona sin señal: lo que se carga queda en el celu y se sube solo (service worker + cola; ver el README). Para probarlo
+  hace falta la versión publicable (`npm run build` + `start`) y un Chrome real: el navegador integrado no permite service workers.

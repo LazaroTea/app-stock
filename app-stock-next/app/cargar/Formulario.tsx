@@ -5,7 +5,14 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { startTransition, useActionState, useEffect, useRef, useState } from 'react';
-import { buscarNombreDeCuit, modificarRemito, registrarRemito } from '../acciones';
+import {
+  buscarNombreDeCuit,
+  modificarRemito,
+  registrarRemito,
+  type RemitoEnviado,
+  type Resultado,
+} from '../acciones';
+import { agregarPendiente, nuevaClaveEnvio } from '@/lib/pendientes';
 import { cuitValido, formatearCuit, soloNumeros } from '@/lib/cuit';
 import {
   buscarEspecie,
@@ -51,12 +58,38 @@ interface Props {
 // Saca los espacios de más para que "5 m" y "5  m " sumen al mismo stock.
 const limpiar = (texto: string) => texto.trim().replace(/\s+/g, ' ');
 
+// Guarda el remito en el servidor. Si no hay señal (o el pedido se corta), lo deja guardado en este celu, en la
+// cola de pendientes: el Sincronizador lo sube solo cuando vuelve la conexión. Un remito con un error de datos NO
+// pasa por acá: el servidor lo contesta y la pantalla lo muestra, como siempre.
+// La clave de envío evita que el mismo remito se guarde dos veces si llega repetido.
+async function registrarOGuardarEnElCelu(prev: Resultado | null, remito: RemitoEnviado, usuario: string): Promise<Resultado> {
+  const claveEnvio = remito.claveEnvio ?? nuevaClaveEnvio();
+  const envio = { ...remito, claveEnvio };
+  const encolar = (): Resultado => {
+    const guardado = agregarPendiente({ clave: claveEnvio, usuario, creado: new Date().toISOString(), remito: envio });
+    return guardado
+      ? {
+          ok: true,
+          pendiente: true,
+          mensaje:
+            'Sin conexión: el remito quedó guardado en este celu. Se sube solo cuando vuelva la señal (todavía no tiene número).',
+        }
+      : { ok: false, mensaje: 'Sin conexión, y este celu no dejó guardar el remito. No lo borres: probá de nuevo con señal.' };
+  };
+  if (!navigator.onLine) return encolar();
+  try {
+    return await registrarRemito(prev, envio);
+  } catch {
+    return encolar();
+  }
+}
+
 const claveLinea = (l: LineaRemito) => claveStock(l.presentacion, etiquetaTamano(l.tamano, l.tamanoDetalle));
 
 export default function Formulario({ especies, presentaciones, tamanos, stock, sugerencias, editando, hoy, usuario }: Props) {
   const router = useRouter();
   const [resultado, enviar, guardando] = useActionState(
-    editando ? modificarRemito.bind(null, editando.numero) : registrarRemito,
+    editando ? modificarRemito.bind(null, editando.numero) : (prev: Resultado | null, r: RemitoEnviado) => registrarOGuardarEnElCelu(prev, r, usuario),
     null,
   );
 
@@ -101,6 +134,8 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
   // Al modificar un remito no: se usan sus datos y no se toca el borrador.
   useEffect(() => {
     if (editando) return;
+    // La fecha de hoy se calcula acá, en el celu: sin señal, la pantalla puede ser una copia guardada de otro día.
+    setFecha(new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' }));
     try {
       const borrador = JSON.parse(localStorage.getItem(BORRADOR) ?? 'null');
       if (Array.isArray(borrador?.lineas) && borrador.lineas.length) {

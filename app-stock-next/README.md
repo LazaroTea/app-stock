@@ -181,6 +181,9 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 | `app/ultimos/page.tsx` | Pantalla **Últimos**: los últimos 50 remitos, una fila cada uno. |
 | `app/acciones.ts` | Lo que pasa en el servidor al guardar un remito (revisa cada línea otra vez). |
 | `app/layout.tsx`, `app/Navegacion.tsx`, `app/MenuUsuario.tsx` | Encabezado, pestañas y el menú del usuario (Mi clave y Salir). |
+| `app/Sincronizador.tsx` | Sin señal: avisos de arriba, sube solos los remitos pendientes y deja las pantallas listas para abrir sin conexión. |
+| `lib/pendientes.ts` | La cola de remitos guardados en el celu mientras no hay señal. |
+| `public/sw.js`, `app/manifest.ts`, `public/icono-*.png` | Lo que permite abrir la app sin señal y agregarla a la pantalla de inicio. |
 | `app/globals.css` | Colores de la marca, estilos y cómo se acomoda en celu, tablet y compu. |
 | `public/`, `app/icon.svg` | Logo de Native (crema para la app, verde para el remito impreso) y el ícono de la pestaña. |
 | `lib/cuit.ts` | Revisa y da formato a un CUIT (ej. 30-71792140-9). |
@@ -241,6 +244,47 @@ El stock no se guarda: la base lo calcula sumando los movimientos de cada depós
 
    Agrega a la base las especies nuevas y corrige el grupo (Árbol o Palmera) de las que ya estaban. Lo demás no se toca (para corregir una que ya existe,
    editala desde el panel de Neon). Se puede correr las veces que quieras: no duplica nada.
+
+## Usarla sin señal (campo, zonas con poca conexión)
+
+La app aguanta los cortes de señal: si no hay conexión, **se puede seguir cargando remitos** y quedan guardados en
+el celu; cuando vuelve la señal, **se suben solos**.
+
+**Preparación (una sola vez, con señal):**
+1. Abrí la app en el celu, ingresá, y dejala abierta un momento (unos 10 segundos): se descargan las pantallas
+   Stock, Cargar y Últimos para poder abrirlas después sin señal. Esto se repite solo, cada vez que se abre con señal.
+2. Conviene **instalarla**: en Chrome (Android), menú ⋮ → **Agregar a la pantalla de inicio** / **Instalar app**.
+   En iPhone (Safari), botón Compartir → **Agregar a inicio**. Se abre como una app, con el ícono de Native.
+
+**Qué pasa sin señal:**
+- Arriba aparece el aviso **"Sin conexión"**. Las pantallas Stock, Cargar y Últimos se abren con los datos de la
+  **última vez que se abrieron con señal** (el stock puede estar desactualizado).
+- En **Cargar** se arma y se guarda el remito como siempre. Al tocar **Guardar** dice que quedó **guardado en
+  este celu**. Todavía **no tiene número**: se lo da el sistema cuando se sube.
+- Arriba se ve **"N remitos sin subir"** (con **Ver cuáles**). Cuando vuelve la señal se suben solos, de a uno y
+  en orden, y aparece "Se subieron N remitos". También se puede tocar **Subir ahora**.
+- Un remito **no se duplica** aunque se corte la señal justo mientras se sube: cada uno lleva una clave única y el
+  servidor reconoce si ya lo tiene.
+- El **responsable** es quien lo cargó. Si en el mismo celu ingresa otra persona antes de que se suban, esos
+  remitos esperan hasta que ingrese quien los cargó.
+
+**Lo que necesita señal:** ingresar (la primera vez de cada sesión), modificar o anular un remito, imprimir o
+ver un remito nuevo (no tiene número hasta subirse), buscar un CUIT en ARCA (sin señal, el nombre se escribe a
+mano), cambiar la clave y la pantalla Usuarios.
+
+**Cuidados:**
+- Mientras haya remitos sin subir, **no borres los datos del navegador** ni desinstales la app: se perderían.
+- Si un remito sin subir tiene un error de datos (por ejemplo, una especie que ya no existe), el aviso lo muestra
+  con el motivo y los botones **Reintentar** y **Descartar**.
+- Si la sesión se cierra (pasan 30 días), avisa; hay que tocar **Salir** y volver a ingresar con señal: los
+  remitos siguen guardados.
+- Al tocar **Salir** se borran las pantallas guardadas para uso sin señal (no quedan a la vista de otra persona).
+- Las pantallas guardadas solo funcionan en la **app publicada** (Vercel), no en la versión de desarrollo.
+
+**Cómo funciona por dentro:** `public/sw.js` (un "service worker") guarda las pantallas y los archivos de la app en
+el celu; con señal lenta espera 4 segundos a la red y, si no llega, muestra la copia. Lo que se guarda sin señal va
+a `localStorage` (clave `remitos-pendientes`). La clave de envío viaja en el remito y la tabla `remitos` la tiene
+única (`clave_envio`).
 
 ## Buscar un CUIT en ARCA
 

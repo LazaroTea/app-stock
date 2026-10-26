@@ -92,6 +92,19 @@ header { background: var(--verde); color: var(--crema); }
   letter-spacing: .2em; user-select: all;
 }
 
+/* Avisos de conexión y de remitos pendientes de subir (ver app/Sincronizador.tsx). */
+.estado-red-caja { padding-top: 12px; display: grid; gap: 8px; }
+.estado-red { padding: 10px 12px; border-radius: 8px; font-size: .9rem; border-left: 4px solid var(--verde); background: var(--salvia-claro); color: var(--verde-oscuro); }
+.estado-red.sin-conexion { border-left-color: #b8860b; background: #fbf0d0; color: #5c4400; }
+.estado-red.mal, .estado-red .mal { border-left-color: var(--rojo); color: var(--rojo); }
+.estado-red.mal { background: var(--rojo-claro); }
+.estado-red-titulo { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.estado-red details { margin-top: 6px; }
+.estado-red summary { cursor: pointer; font-weight: 600; }
+.estado-red ul { margin: 6px 0 0; padding-left: 18px; }
+.estado-red li + li { margin-top: 6px; }
+.estado-red .boton-texto { min-height: 36px; padding: 4px 10px; color: inherit; text-decoration: underline; text-transform: none; letter-spacing: 0; }
+
 /* Pantalla de ingreso. */
 .ingreso { max-width: 380px; margin: 24px auto; padding: 20px; }
 .ingreso h2 { margin-top: 0; }

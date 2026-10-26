@@ -48,7 +48,8 @@ export default function MenuUsuario({ nombre, rol }: { nombre: string; rol: stri
           <Link href="/clave" role="menuitem">
             Mi clave
           </Link>
-          <form action={cerrarSesion}>
+          {/* Al salir se borran las pantallas guardadas para usar sin señal: no deben quedar a la vista de otra persona. */}
+          <form action={cerrarSesion} onSubmit={() => navigator.serviceWorker?.controller?.postMessage('limpiar')}>
             <button type="submit" role="menuitem">
               Salir
             </button>
