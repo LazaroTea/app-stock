@@ -55,7 +55,6 @@ export default async function PaginaUltimos() {
                     {r.tipo === 'Ajuste' && <span className="tipo-Ajuste">Ajuste en </span>}
                     {recorrido(r)}
                   </Link>
-                  {r.destinatario && <div className="ayuda">Recibe {r.destinatario}</div>}
                 </td>
                 <td className={r.plantas < 0 ? 'num negativo' : 'num'}>
                   {r.tipo === 'Ajuste' && r.plantas > 0 ? `+${r.plantas}` : r.plantas}

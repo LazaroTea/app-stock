@@ -5,7 +5,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { startTransition, useActionState, useEffect, useRef, useState } from 'react';
-import { modificarRemito, registrarRemito } from '../acciones';
+import { buscarNombreDeCuit, modificarRemito, registrarRemito } from '../acciones';
+import { cuitValido, formatearCuit, soloNumeros } from '@/lib/cuit';
 import {
   buscarEspecie,
   claveStock,
@@ -38,7 +39,7 @@ interface Props {
   presentaciones: string[];
   tamanos: string[];
   stock: StockPorDeposito;
-  /** Destinatarios, proveedores y clientes ya usados, para sugerirlos. */
+  /** Proveedores y clientes ya usados, para sugerirlos. */
   sugerencias: Sugerencias;
   /** El remito que se está modificando (si no hay, es un remito nuevo). */
   editando?: RemitoGuardado;
@@ -64,11 +65,12 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
     editando && TIPOS.includes(editando.tipo) ? editando.tipo : 'Movimiento',
   );
   const [fecha, setFecha] = useState(editando?.fecha ?? hoy);
-  const [destinatario, setDestinatario] = useState(editando?.destinatario ?? '');
   const [procedencia, setProcedencia] = useState(editando?.procedencia ?? '');
   const [procedenciaDetalle, setProcedenciaDetalle] = useState(editando?.procedenciaDetalle ?? '');
+  const [procedenciaCuit, setProcedenciaCuit] = useState(editando?.procedenciaCuit ?? '');
   const [destino, setDestino] = useState(editando?.destino ?? '');
   const [destinoDetalle, setDestinoDetalle] = useState(editando?.destinoDetalle ?? '');
+  const [destinoCuit, setDestinoCuit] = useState(editando?.destinoCuit ?? '');
   // Quien inició sesión; al modificar, el responsable original (quien modifica queda anotado aparte).
   const responsable = editando?.responsable || usuario;
   const [observaciones, setObservaciones] = useState(editando?.observaciones ?? '');
@@ -104,11 +106,12 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
       if (Array.isArray(borrador?.lineas) && borrador.lineas.length) {
         setLineas(borrador.lineas);
         if (TIPOS.includes(borrador.tipo)) setTipo(borrador.tipo);
-        if (typeof borrador.destinatario === 'string') setDestinatario(borrador.destinatario);
         if (typeof borrador.procedencia === 'string') setProcedencia(borrador.procedencia);
         if (typeof borrador.procedenciaDetalle === 'string') setProcedenciaDetalle(borrador.procedenciaDetalle);
+        if (typeof borrador.procedenciaCuit === 'string') setProcedenciaCuit(borrador.procedenciaCuit);
         if (typeof borrador.destino === 'string') setDestino(borrador.destino);
         if (typeof borrador.destinoDetalle === 'string') setDestinoDetalle(borrador.destinoDetalle);
+        if (typeof borrador.destinoCuit === 'string') setDestinoCuit(borrador.destinoCuit);
       }
     } catch {}
   }, []);
@@ -116,11 +119,13 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
   useEffect(() => {
     if (editando) return;
     try {
-      const borrador = { tipo, destinatario, procedencia, procedenciaDetalle, destino, destinoDetalle, lineas };
+      const borrador = {
+        tipo, procedencia, procedenciaDetalle, procedenciaCuit, destino, destinoDetalle, destinoCuit, lineas,
+      };
       if (lineas.length) localStorage.setItem(BORRADOR, JSON.stringify(borrador));
       else localStorage.removeItem(BORRADOR);
     } catch {}
-  }, [tipo, destinatario, procedencia, procedenciaDetalle, destino, destinoDetalle, lineas]);
+  }, [tipo, procedencia, procedenciaDetalle, procedenciaCuit, destino, destinoDetalle, destinoCuit, lineas]);
 
   // Después de guardar bien, el remito queda vacío para empezar otro.
   // Después de modificar, se vuelve a la página del remito.
@@ -131,11 +136,12 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
     }
     if (resultado?.ok) {
       setLineas([]);
-      setDestinatario('');
       setProcedencia('');
       setProcedenciaDetalle('');
+      setProcedenciaCuit('');
       setDestino('');
       setDestinoDetalle('');
+      setDestinoCuit('');
       setObservaciones('');
       setAviso(null);
     }
@@ -147,10 +153,12 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
     if (!r.procedencia?.opciones.includes(procedencia)) {
       setProcedencia('');
       setProcedenciaDetalle('');
+      setProcedenciaCuit('');
     }
     if (!r.destino?.opciones.includes(destino)) {
       setDestino('');
       setDestinoDetalle('');
+      setDestinoCuit('');
     }
     setTipo(nuevo);
   }
@@ -222,11 +230,12 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
       enviar({
         tipo,
         fecha,
-        destinatario,
         procedencia,
         procedenciaDetalle,
+        procedenciaCuit,
         destino,
         destinoDetalle,
+        destinoCuit,
         observaciones,
         lineas,
       }),
@@ -244,6 +253,8 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
   const conSigno = tipo !== 'Ajuste' && lineas.some(l => l.cantidad < 0);
   const totalPlantas = lineas.reduce((suma, l) => suma + l.cantidad, 0);
   const faltaLugar = (regla: ReglaLugar | null, lugar: string) => regla?.obligatorio && !lugar;
+  // Un CUIT a medio escribir o con un número mal (es opcional, pero si se escribe tiene que ser válido).
+  const cuitIncompleto = (lugar: string, cuit: string) => LUGARES_A_ESPECIFICAR.includes(lugar) && cuit !== '' && !cuitValido(cuit);
   const faltaNombre = (lugar: string, detalle: string) => LUGARES_A_ESPECIFICAR.includes(lugar) && !limpiar(detalle);
   const problema = conSigno
     ? 'Hay cantidades negativas: solo se permiten en los ajustes.'
@@ -255,7 +266,9 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
           ? `Falta escribir qué ${procedencia.toLowerCase()} es (punto de partida).`
           : faltaNombre(destino, destinoDetalle)
             ? `Falta escribir qué ${destino.toLowerCase()} es (punto de llegada).`
-            : DEPOSITOS.includes(procedencia) && procedencia === destino
+            : cuitIncompleto(procedencia, procedenciaCuit) || cuitIncompleto(destino, destinoCuit)
+              ? 'El CUIT no es válido: revisalo o dejalo vacío.'
+              : DEPOSITOS.includes(procedencia) && procedencia === destino
               ? 'El punto de partida y el de llegada tienen que ser distintos.'
               : tipo === 'Movimiento' && procedencia && destino && depositos.length === 0
                 ? 'El punto de partida o el de llegada tiene que ser un depósito (Goya, Pilar o Benavidez).'
@@ -304,8 +317,10 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
               regla={reglas.procedencia}
               lugar={procedencia}
               detalle={procedenciaDetalle}
+              cuit={procedenciaCuit}
               onLugar={setProcedencia}
               onDetalle={setProcedenciaDetalle}
+              onCuit={setProcedenciaCuit}
               sugeridos={procedencia === 'Cliente' ? sugerencias.clientes : sugerencias.proveedores}
             />
           )}
@@ -315,32 +330,12 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
               regla={reglas.destino}
               lugar={destino}
               detalle={destinoDetalle}
+              cuit={destinoCuit}
               onLugar={setDestino}
               onDetalle={setDestinoDetalle}
+              onCuit={setDestinoCuit}
               sugeridos={destino === 'Proveedor' ? sugerencias.proveedores : sugerencias.clientes}
-            >
-              {/* El destinatario va con el punto de llegada (en un ajuste no hay a quién entregar). */}
-              {tipo === 'Movimiento' && (
-                <>
-                  <label htmlFor="destinatario">
-                    Quién recibe <span className="opcional">(opcional)</span>
-                  </label>
-                  <input
-                    id="destinatario"
-                    list="lista-destinatarios"
-                    placeholder="Persona o contacto"
-                    maxLength={100}
-                    value={destinatario}
-                    onChange={e => setDestinatario(e.target.value)}
-                  />
-                  <datalist id="lista-destinatarios">
-                    {sugerencias.destinatarios.map(d => (
-                      <option key={d} value={d} />
-                    ))}
-                  </datalist>
-                </>
-              )}
-            </CampoLugar>
+            />
           )}
         </div>
 
@@ -483,13 +478,12 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
           <div className="remito-extra">
             {reglas.procedencia && procedencia && (
               <div>
-                {reglas.procedencia.titulo}: {etiquetaLugar(procedencia, limpiar(procedenciaDetalle))}
+                {reglas.procedencia.titulo}: {etiquetaLugar(procedencia, limpiar(procedenciaDetalle), procedenciaCuit)}
               </div>
             )}
             {reglas.destino && destino && (
               <div>
-                {reglas.destino.titulo}: {etiquetaLugar(destino, limpiar(destinoDetalle))}
-                {tipo === 'Movimiento' && limpiar(destinatario) && ` · recibe ${limpiar(destinatario)}`}
+                {reglas.destino.titulo}: {etiquetaLugar(destino, limpiar(destinoDetalle), destinoCuit)}
               </div>
             )}
             {responsable && <div>Responsable: {responsable}</div>}
@@ -585,18 +579,54 @@ interface PropsLugar {
   regla: ReglaLugar;
   lugar: string;
   detalle: string;
+  /** CUIT (solo números) o ''. */
+  cuit: string;
   onLugar: (valor: string) => void;
   onDetalle: (valor: string) => void;
+  onCuit: (valor: string) => void;
   /** Nombres ya usados de proveedores o clientes, para sugerirlos. */
   sugeridos: string[];
-  /** Lo que va debajo del lugar (en el punto de llegada: quién recibe). */
-  children?: React.ReactNode;
 }
 
 // Un lugar (procedencia, destino o depósito) con las opciones que corresponden al tipo de movimiento.
-// Si se elige "Proveedor" o "Cliente", aparece un renglón para escribir cuál.
-function CampoLugar({ id, regla, lugar, detalle, onLugar, onDetalle, sugeridos, children }: PropsLugar) {
+// Si se elige "Proveedor" o "Cliente", aparecen el CUIT (opcional) y un renglón para escribir cuál. Al escribir
+// un CUIT válido se busca el nombre (en ARCA, o en remitos anteriores) y se completa solo.
+function CampoLugar({ id, regla, lugar, detalle, cuit, onLugar, onDetalle, onCuit, sugeridos }: PropsLugar) {
   const especificar = LUGARES_A_ESPECIFICAR.includes(lugar);
+  const [busqueda, setBusqueda] = useState<{ ok: boolean; texto: string } | null>(null);
+  const [buscando, setBuscando] = useState(false);
+  // El último CUIT buscado: un CUIT que ya vino con el remito (al modificarlo) no se vuelve a buscar solo.
+  const ultimoBuscado = useRef(soloNumeros(cuit));
+
+  async function buscar(numero: string) {
+    ultimoBuscado.current = numero;
+    setBuscando(true);
+    setBusqueda(null);
+    try {
+      const r = await buscarNombreDeCuit(numero);
+      if (ultimoBuscado.current !== numero) return; // mientras tanto cambió el CUIT
+      setBusqueda({ ok: r.ok, texto: r.mensaje });
+      if (r.ok && r.nombre) onDetalle(r.nombre.slice(0, 100));
+    } catch {
+      setBusqueda({ ok: false, texto: 'No se pudo buscar el CUIT: escribí el nombre a mano.' });
+    } finally {
+      if (ultimoBuscado.current === numero) setBuscando(false);
+    }
+  }
+
+  function cambiarCuit(texto: string) {
+    const numeros = soloNumeros(texto).slice(0, 11);
+    onCuit(numeros);
+    if (numeros.length < 11) {
+      ultimoBuscado.current = '';
+      setBusqueda(null);
+    } else if (!cuitValido(numeros)) {
+      setBusqueda({ ok: false, texto: 'El CUIT no es válido: revisá los números.' });
+    } else if (numeros !== ultimoBuscado.current) {
+      buscar(numeros);
+    }
+  }
+
   return (
     <div>
       <label htmlFor={id}>
@@ -613,6 +643,22 @@ function CampoLugar({ id, regla, lugar, detalle, onLugar, onDetalle, sugeridos, 
       {especificar && (
         <>
           <input
+            id={`${id}_cuit`}
+            className="renglon-extra"
+            aria-label={`CUIT del ${lugar.toLowerCase()} (opcional)`}
+            placeholder="CUIT (opcional): se busca el nombre solo"
+            inputMode="numeric"
+            autoComplete="off"
+            value={formatearCuit(cuit)}
+            onChange={e => cambiarCuit(e.target.value)}
+            autoFocus
+          />
+          {(buscando || busqueda) && (
+            <div className={busqueda && !busqueda.ok ? 'ayuda cuit-aviso mal' : 'ayuda cuit-aviso'} role="status">
+              {buscando ? 'Buscando…' : busqueda?.texto}
+            </div>
+          )}
+          <input
             id={`${id}_detalle`}
             className="renglon-extra"
             aria-label={`Escribí qué ${lugar.toLowerCase()} es`}
@@ -621,7 +667,6 @@ function CampoLugar({ id, regla, lugar, detalle, onLugar, onDetalle, sugeridos, 
             maxLength={100}
             value={detalle}
             onChange={e => onDetalle(e.target.value)}
-            autoFocus
           />
           <datalist id={`lista-${id}`}>
             {sugeridos.map(s => (
@@ -630,7 +675,6 @@ function CampoLugar({ id, regla, lugar, detalle, onLugar, onDetalle, sugeridos, 
           </datalist>
         </>
       )}
-      {children}
     </div>
   );
 }

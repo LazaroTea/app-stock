@@ -95,20 +95,12 @@ export default async function PaginaRemito({ params }: Props) {
           </div>
           {reglas.procedencia && remito.procedencia && (
             <div>
-              <span>{reglas.procedencia.titulo}:</span> {etiquetaLugar(remito.procedencia, remito.procedenciaDetalle)}
+              <span>{reglas.procedencia.titulo}:</span> {etiquetaLugar(remito.procedencia, remito.procedenciaDetalle, remito.procedenciaCuit)}
             </div>
           )}
           {reglas.destino && remito.destino && (
             <div>
-              <span>{reglas.destino.titulo}:</span> {etiquetaLugar(remito.destino, remito.destinoDetalle)}
-              {/* Quién recibe va en el mismo renglón que el punto de llegada. */}
-              {remito.destinatario && ` · recibe ${remito.destinatario}`}
-            </div>
-          )}
-          {/* Remitos viejos con destinatario y sin punto de llegada: se muestra aparte. */}
-          {remito.destinatario && !(reglas.destino && remito.destino) && (
-            <div>
-              <span>Destinatario:</span> {remito.destinatario}
+              <span>{reglas.destino.titulo}:</span> {etiquetaLugar(remito.destino, remito.destinoDetalle, remito.destinoCuit)}
             </div>
           )}
           {remito.responsable && (

@@ -105,9 +105,7 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
   aparecen también las que no tienen stock.
 - **Cargar** (en formato **remito**):
   1. **Datos del remito:** tipo (**Movimiento** o **Ajuste**), los lugares, fecha, responsable (sale solo: es quien
-     ingresó, y no se puede cambiar) y observaciones. En un **Movimiento**, debajo del punto de llegada hay un
-     renglón **Quién recibe** (opcional: persona o contacto). En el remito sale en el mismo renglón que el punto
-     de llegada ("Punto de llegada: Cliente (Vivero X) · recibe Juan"). En un Ajuste no aparece.
+     ingresó, y no se puede cambiar) y observaciones.
 
      | Tipo | Punto de partida | Punto de llegada | Qué hace con el stock |
      |---|---|---|---|
@@ -118,7 +116,10 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
      en Goya y suma en Pilar; Pilar → Cliente o Pilar → Palma Sola resta en Pilar. El punto de partida o el de
      llegada tiene que ser un depósito, y no pueden ser el mismo depósito.
 
-     Si se elige Proveedor o Cliente, aparece un renglón para escribir cuál (se sugieren los ya usados).
+     Si se elige Proveedor o Cliente, aparecen dos renglones: el **CUIT** (opcional) y **¿Cuál?** (el nombre).
+     Al escribir un CUIT válido, el nombre se completa solo (ver "Buscar un CUIT en ARCA" más abajo); si el CUIT
+     no se puede buscar, el nombre se escribe a mano. El CUIT se revisa (dígito verificador) y sale en el remito
+     ("Cliente (Vivero X · CUIT 30-…)"). Se sugieren los nombres ya usados.
      Los depósitos y lugares están en `lib/stock.ts` (`DEPOSITOS`, `PARTIDAS`, `LLEGADAS`).
   2. **Sumar plantas:** especie, presentación (botones), tamaño (desplegable) y cantidad, y el botón
      **+ Sumar** (o Enter). Cada planta sumada aparece en el remito, al costado en la compu y abajo en el celu.
@@ -152,7 +153,7 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 - **Quién puede modificar o anular:** solo los administradores. Se decide en `lib/permisos.ts` (la pantalla
   oculta los botones y el servidor rechaza el pedido aunque alguien lo intente igual).
 - **Últimos:** una fila por **remito** (los 50 más nuevos), sin el desglose de las plantas: fecha, número, tipo,
-  recorrido (ej. "Goya → Pilar"; en un ajuste, "Ajuste en Goya"), quién recibe, total de plantas y cantidad de
+  recorrido (ej. "Goya → Pilar"; en un ajuste, "Ajuste en Goya"), total de plantas y cantidad de
   líneas, y responsable. Tocando el remito se abre con todo el detalle, para verlo, imprimirlo, modificarlo o
   anularlo. Los anulados se ven tachados.
 
@@ -182,6 +183,9 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 | `app/layout.tsx`, `app/Navegacion.tsx`, `app/MenuUsuario.tsx` | Encabezado, pestañas y el menú del usuario (Mi clave y Salir). |
 | `app/globals.css` | Colores de la marca, estilos y cómo se acomoda en celu, tablet y compu. |
 | `public/`, `app/icon.svg` | Logo de Native (crema para la app, verde para el remito impreso) y el ícono de la pestaña. |
+| `lib/cuit.ts` | Revisa y da formato a un CUIT (ej. 30-71792140-9). |
+| `lib/arca.ts` | Busca el nombre de un CUIT en ARCA (ingreso con certificado y consulta del padrón). |
+| `certificados/` | La clave privada y el pedido de certificado para ARCA (solo en tu compu, no están en GitHub). |
 | `lib/stock.ts` | Reglas del stock (las salidas restan, etc.) y ayudas para la pantalla. |
 | `lib/almacen.ts` | Lee y guarda los datos en la base Neon. Crea las tablas la primera vez. Tiene las listas iniciales de presentaciones y tamaños. |
 | `lib/especies.ts` | El listado de las 179 especies (árboles nativos, palmeras y frutales), con su región y grupo. |
@@ -191,7 +195,7 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 
 ## Los datos (base Neon)
 
-Hay siete tablas:
+Hay ocho tablas:
 
 - **especies**: código, nombre común, nombre científico, región (o "Exótica"), grupo (Árbol, Palmera o
   Frutal), stock mínimo.
@@ -199,7 +203,7 @@ Hay siete tablas:
 - **tamanos**: los tamaños y su orden.
 - **remitos**: número (`id`), fecha, tipo (Movimiento o Ajuste), punto de partida (`procedencia`) y de llegada
   (`destino`), con `procedencia_detalle` y `destino_detalle` para el nombre del proveedor o cliente (en los
-  ajustes, el depósito va en `destino`), destinatario, responsable y observaciones, y si está anulado
+  ajustes, el depósito va en `destino`; con `procedencia_cuit` y `destino_cuit` para el CUIT), responsable y observaciones, y si está anulado
   (`anulado`, `anulado_motivo`, `anulado_en`, `anulado_por`) o cuándo y quién lo modificó (`modificado_en`,
   `modificado_por`).
 - **movimientos**: lo que cada línea de remito suma (+) o resta (−) en un **depósito** (`deposito`), con su
@@ -210,6 +214,7 @@ Hay siete tablas:
 - **usuarios**: nombre, clave (encriptada), rol (Administrador o Colaborador), si está activo (`activo`), si
   la clave es provisoria (`cambiar_clave`), los intentos equivocados (`intentos_fallidos`, `bloqueado_hasta`)
   y el último ingreso (`ultimo_ingreso`).
+- **arca_tickets**: el ticket de ingreso a ARCA (token, firma y vencimiento) para la búsqueda de CUIT.
 - **sesiones**: un código al azar por cada dispositivo donde alguien ingresó, de qué usuario es y cuándo vence.
 
 El stock no se guarda: la base lo calcula sumando los movimientos de cada depósito.
@@ -236,6 +241,51 @@ El stock no se guarda: la base lo calcula sumando los movimientos de cada depós
 
    Agrega a la base las especies nuevas y corrige el grupo (Árbol o Palmera) de las que ya estaban. Lo demás no se toca (para corregir una que ya existe,
    editala desde el panel de Neon). Se puede correr las veces que quieras: no duplica nada.
+
+## Buscar un CUIT en ARCA
+
+Al cargar un proveedor o cliente, el CUIT completa el nombre usando el padrón de ARCA (ex AFIP). Es un servicio
+oficial y gratuito, pero ARCA pide que la empresa lo habilite **una sola vez** con un certificado digital. La app
+ya está lista: **mientras no esté habilitado, sigue funcionando** (el nombre se escribe a mano y, si ese CUIT ya
+se usó en otro remito, se completa con ese nombre).
+
+**Ya está hecho:** la clave privada y el pedido de certificado de Native (CUIT 30-71792140-9) están en
+`app-stock-next/certificados/`: `native-arca.key` (**secreta**: no se comparte, no se sube a GitHub, no se pega
+en ningún chat) y `native-arca.csr` (el pedido; este es el que se sube a ARCA).
+
+**Pasos que hacés vos** (con la clave fiscal de Native; los nombres de los menús de ARCA pueden variar un poco):
+
+1. Entrá a [arca.gob.ar](https://www.arca.gob.ar) → **Ingresar** con la clave fiscal del CUIT 30-71792140-9.
+2. Abrí el servicio **Administración de Certificados Digitales**. Si no aparece, primero hay que agregarlo desde
+   **Administrador de Relaciones de Clave Fiscal** → **Adherir servicio**.
+3. Elegí el CUIT de Native → **Agregar alias** (poné `app-stock`) → subí el archivo `native-arca.csr`
+   (o pegá su contenido). ARCA te devuelve el certificado: **descargalo** (archivo `.crt`) y guardalo en
+   `app-stock-next/certificados/` con el nombre `native-arca.crt`.
+4. Entrá a **Administrador de Relaciones de Clave Fiscal** → **Nueva relación**:
+   - **Servicio:** ARCA → WebServices → **Consulta de Padrón Constancia de Inscripción**
+     (`ws_sr_constancia_inscripcion`). No sirve otro servicio de padrón.
+   - **Representante:** el alias `app-stock` (el "computador fiscal"). **Representado:** Native S.A.
+5. **Avisale a Claude** que ya tenés el `.crt`: lo carga en tu `.env.local` (sin mostrarlo), prueba una
+   consulta real y te dice si anda.
+6. **Para la app publicada** (Vercel → Settings → Environment Variables), agregá estas cuatro. Los dos
+   archivos se abren con el Bloc de notas: copiás **todo** el contenido (de `-----BEGIN…` a `-----END…`).
+
+   | Variable | Qué poner |
+   |---|---|
+   | `ARCA_CUIT` | `30717921409` |
+   | `ARCA_CERT` | El contenido de `native-arca.crt` |
+   | `ARCA_KEY` | El contenido de `native-arca.key` |
+   | `ARCA_ENTORNO` | `produccion` |
+
+   Después, en **Deployments**, **Redeploy**.
+
+**Cómo funciona por dentro:** la app firma un pedido con el certificado y ARCA le da un "ticket" que vale 12
+horas (se guarda en la tabla `arca_tickets`: ARCA no deja pedir otro mientras hay uno vigente). Con el ticket
+consulta el CUIT (`getPersona_v2`). Si es una empresa devuelve la razón social; si es una persona, "Apellido
+Nombre". Si el CUIT no existe o ARCA no responde, la pantalla lo avisa y se escribe el nombre a mano.
+
+**El certificado vence** (ARCA suele darlo por un tiempo limitado). Cuando venza, hay que repetir los pasos 3 a
+6 con un pedido nuevo (se puede generar de nuevo con Claude).
 
 ## Publicarla en Vercel
 

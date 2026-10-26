@@ -5,9 +5,12 @@ import {
   anularRemito as marcarAnulado,
   guardarRemito,
   leerCatalogo,
+  nombreDeCuitUsado,
   modificarRemito as guardarCambios,
   type RemitoNuevo,
 } from '@/lib/almacen';
+import { buscarCuit } from '@/lib/arca';
+import { cuitValido, formatearCuit, soloNumeros } from '@/lib/cuit';
 import { puedeAnularRemitos, puedeModificarRemitos } from '@/lib/permisos';
 import { usuarioActual } from '@/lib/sesion';
 import {
@@ -30,11 +33,12 @@ export interface Resultado {
 export interface RemitoEnviado {
   tipo: TipoMovimiento;
   fecha: string;
-  destinatario: string;
   procedencia: string;
   procedenciaDetalle: string;
+  procedenciaCuit: string;
   destino: string;
   destinoDetalle: string;
+  destinoCuit: string;
   observaciones: string;
   lineas: LineaRemito[];
 }
@@ -47,17 +51,25 @@ function limpiar(texto: unknown): string {
 }
 
 // Revisa un lugar (procedencia o destino) contra la regla del tipo de movimiento.
-// Con "Proveedor" o "Cliente" el nombre es obligatorio. Devuelve el lugar y su detalle limpios, o un error.
-function revisarLugar(regla: ReglaLugar | null, lugar: unknown, detalle: unknown): { lugar: string; detalle: string } | string {
+// Con "Proveedor" o "Cliente" el nombre es obligatorio y el CUIT es opcional (pero si se escribe, tiene que ser válido).
+// Devuelve el lugar, su detalle y su CUIT limpios, o un error.
+function revisarLugar(
+  regla: ReglaLugar | null,
+  lugar: unknown,
+  detalle: unknown,
+  cuit: unknown,
+): { lugar: string; detalle: string; cuit: string } | string {
   const l = String(lugar ?? '');
-  if (!regla) return { lugar: '', detalle: '' };
-  if (!l) return regla.obligatorio ? `Elegí el ${regla.titulo.toLowerCase()}.` : { lugar: '', detalle: '' };
+  if (!regla) return { lugar: '', detalle: '', cuit: '' };
+  if (!l) return regla.obligatorio ? `Elegí el ${regla.titulo.toLowerCase()}.` : { lugar: '', detalle: '', cuit: '' };
   if (!regla.opciones.includes(l)) return `"${l}" no es una opción válida para ${regla.titulo.toLowerCase()}.`;
-  if (!LUGARES_A_ESPECIFICAR.includes(l)) return { lugar: l, detalle: '' };
+  if (!LUGARES_A_ESPECIFICAR.includes(l)) return { lugar: l, detalle: '', cuit: '' };
   const d = limpiar(detalle);
   if (!d) return `Escribí qué ${l.toLowerCase()} es.`;
   if (d.length > 100) return `El nombre del ${l.toLowerCase()} es muy largo (máximo 100 letras).`;
-  return { lugar: l, detalle: d };
+  const c = soloNumeros(String(cuit ?? ''));
+  if (c && !cuitValido(c)) return `El CUIT del ${l.toLowerCase()} no es válido: revisá los números.`;
+  return { lugar: l, detalle: d, cuit: c };
 }
 
 
@@ -70,13 +82,12 @@ async function revisarRemito(remito: RemitoEnviado, responsable: string): Promis
   if (!TIPOS.includes(tipo)) return 'Tipo de movimiento inválido.';
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return 'La fecha no es válida.';
   if (!Array.isArray(remito.lineas) || remito.lineas.length === 0) return 'El remito está vacío: sumá al menos una planta.';
-  if (limpiar(remito.destinatario).length > 100) return 'El destinatario es muy largo (máximo 100 letras).';
   if (remito.lineas.length > MAXIMO_LINEAS) return `El remito tiene más de ${MAXIMO_LINEAS} líneas.`;
 
   const reglas = lugaresDelTipo(tipo);
-  const procedencia = revisarLugar(reglas.procedencia, remito.procedencia, remito.procedenciaDetalle);
+  const procedencia = revisarLugar(reglas.procedencia, remito.procedencia, remito.procedenciaDetalle, remito.procedenciaCuit);
   if (typeof procedencia === 'string') return procedencia;
-  const destino = revisarLugar(reglas.destino, remito.destino, remito.destinoDetalle);
+  const destino = revisarLugar(reglas.destino, remito.destino, remito.destinoDetalle, remito.destinoCuit);
   if (typeof destino === 'string') return destino;
   if (DEPOSITOS.includes(procedencia.lugar) && procedencia.lugar === destino.lugar) {
     return 'El punto de partida y el de llegada tienen que ser distintos.';
@@ -107,12 +118,12 @@ async function revisarRemito(remito: RemitoEnviado, responsable: string): Promis
   return {
     tipo,
     fecha,
-    // Quién recibe va con el punto de llegada: en un ajuste no hay.
-    destinatario: tipo === 'Ajuste' ? '' : limpiar(remito.destinatario),
     procedencia: procedencia.lugar,
     procedenciaDetalle: procedencia.detalle,
+    procedenciaCuit: procedencia.cuit,
     destino: destino.lugar,
     destinoDetalle: destino.detalle,
+    destinoCuit: destino.cuit,
     responsable,
     observaciones: String(remito.observaciones ?? '').trim(),
     lineas,
@@ -181,4 +192,33 @@ export async function anularRemito(numero: number, motivo: string): Promise<Resu
     console.error('Error al anular el remito:', e);
     return { ok: false, mensaje: ERROR_BASE };
   }
+}
+
+export interface ResultadoCuit {
+  ok: boolean;
+  /** El nombre encontrado (razón social, o apellido y nombre). */
+  nombre?: string;
+  /** De dónde salió: ARCA o un remito anterior con ese mismo CUIT. */
+  origen?: 'ARCA' | 'remito anterior';
+  mensaje: string;
+}
+
+// Busca el nombre de un CUIT: primero en ARCA (si está activado) y, si no se puede, en remitos anteriores.
+export async function buscarNombreDeCuit(cuit: string): Promise<ResultadoCuit> {
+  const usuario = await usuarioActual();
+  if (!usuario || usuario.cambiarClave) return { ok: false, mensaje: SIN_SESION };
+  const c = soloNumeros(String(cuit ?? ''));
+  if (!cuitValido(c)) return { ok: false, mensaje: 'El CUIT no es válido: revisá los números.' };
+  const arca = await buscarCuit(c);
+  if (arca.ok) {
+    const estado = arca.persona.estado && arca.persona.estado !== 'ACTIVO' ? ` (clave ${arca.persona.estado.toLowerCase()})` : '';
+    return { ok: true, nombre: arca.persona.nombre, origen: 'ARCA', mensaje: `ARCA: ${arca.persona.nombre}${estado}` };
+  }
+  try {
+    const usado = await nombreDeCuitUsado(c);
+    if (usado) return { ok: true, nombre: usado, origen: 'remito anterior', mensaje: `Ya usado antes: ${usado}` };
+  } catch (e) {
+    console.error('Error al buscar el CUIT en remitos anteriores:', e);
+  }
+  return { ok: false, mensaje: `${formatearCuit(c)}: ${arca.mensaje}` };
 }

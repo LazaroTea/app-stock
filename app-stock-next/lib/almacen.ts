@@ -146,6 +146,19 @@ async function crearTablas() {
     sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS anulado_motivo text NOT NULL DEFAULT ''`,
     sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS anulado_en timestamptz`,
     sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS modificado_en timestamptz`,
+    // CUIT del proveedor o cliente de la partida y de la llegada (solo números), 2026-10-26.
+    sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS procedencia_cuit text NOT NULL DEFAULT ''`,
+    sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS destino_cuit text NOT NULL DEFAULT ''`,
+    // El ingreso a ARCA (ticket) se guarda acá: ARCA no deja pedir uno nuevo mientras hay uno vigente, y en Vercel
+    // cada pedido puede caer en un servidor distinto, así que no alcanza con tenerlo en memoria.
+    sql`CREATE TABLE IF NOT EXISTS arca_tickets (
+      servicio text NOT NULL,
+      entorno text NOT NULL,
+      token text NOT NULL,
+      firma text NOT NULL,
+      vence timestamptz NOT NULL,
+      PRIMARY KEY (servicio, entorno)
+    )`,
     // Quién modificó o anuló (nombre del usuario), desde que hay usuarios.
     sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS modificado_por text NOT NULL DEFAULT ''`,
     sql`ALTER TABLE remitos ADD COLUMN IF NOT EXISTS anulado_por text NOT NULL DEFAULT ''`,
@@ -261,7 +274,6 @@ export interface RemitoResumen {
   procedenciaDetalle: string;
   destino: string;
   destinoDetalle: string;
-  destinatario: string;
   responsable: string;
   anulado: boolean;
   lineas: number;
@@ -278,7 +290,7 @@ export async function leerUltimosRemitos(cantidad: number): Promise<{ remitos: R
     // plantas se cuentan una vez por línea (todas las líneas de un remito tienen la misma cantidad de filas).
     sql`SELECT r.id AS numero, to_char(r.fecha, 'YYYY-MM-DD') AS fecha, r.tipo,
           r.procedencia, r.procedencia_detalle AS "procedenciaDetalle", r.destino, r.destino_detalle AS "destinoDetalle",
-          r.destinatario, r.responsable, r.anulado,
+          r.responsable, r.anulado,
           count(DISTINCT m.linea)::int AS lineas,
           coalesce(CASE WHEN r.tipo = 'Ajuste' THEN sum(m.cantidad)
                         ELSE sum(abs(m.cantidad)) * count(DISTINCT m.linea) / nullif(count(m.id), 0) END, 0)::int AS plantas
@@ -292,29 +304,27 @@ export async function leerUltimosRemitos(cantidad: number): Promise<{ remitos: R
 export interface RemitoNuevo {
   fecha: string;
   tipo: TipoMovimiento;
-  destinatario: string;
   procedencia: string;
   procedenciaDetalle: string;
+  procedenciaCuit: string;
   destino: string;
   destinoDetalle: string;
+  destinoCuit: string;
   responsable: string;
   observaciones: string;
   lineas: LineaRemito[];
 }
 
 export interface Sugerencias {
-  destinatarios: string[];
   proveedores: string[];
   clientes: string[];
 }
 
-/** Destinatarios, proveedores y clientes ya usados (los más recientes primero), para sugerirlos al cargar. */
+/** Proveedores y clientes ya usados (los más recientes primero), para sugerirlos al cargar. */
 export async function leerSugerencias(): Promise<Sugerencias> {
   await prepararBase();
   const sql = conexion();
-  const [destinatarios, proveedores, clientes] = await Promise.all([
-    sql`SELECT destinatario AS nombre FROM remitos WHERE destinatario <> ''
-        GROUP BY destinatario ORDER BY max(id) DESC LIMIT 200`,
+  const [proveedores, clientes] = await Promise.all([
     // Un proveedor puede estar en la partida (compra) o en la llegada (devolución); un cliente, en la llegada.
     sql`SELECT nombre FROM (
           SELECT procedencia_detalle AS nombre, id FROM remitos WHERE procedencia = 'Proveedor'
@@ -326,18 +336,19 @@ export async function leerSugerencias(): Promise<Sugerencias> {
         ) x WHERE nombre <> '' GROUP BY nombre ORDER BY max(id) DESC LIMIT 200`,
   ]);
   const nombres = (filas: Record<string, unknown>[]) => filas.map(f => String(f.nombre));
-  return { destinatarios: nombres(destinatarios), proveedores: nombres(proveedores), clientes: nombres(clientes) };
+  return { proveedores: nombres(proveedores), clientes: nombres(clientes) };
 }
 
 export interface RemitoGuardado {
   numero: number;
   fecha: string;
   tipo: TipoMovimiento;
-  destinatario: string;
   procedencia: string;
   procedenciaDetalle: string;
+  procedenciaCuit: string;
   destino: string;
   destinoDetalle: string;
+  destinoCuit: string;
   responsable: string;
   observaciones: string;
   anulado: boolean;
@@ -356,8 +367,9 @@ export async function leerRemito(numero: number): Promise<RemitoGuardado | null>
   await prepararBase();
   const sql = conexion();
   const [[remito], lineas] = await Promise.all([
-    sql`SELECT id AS numero, to_char(fecha, 'YYYY-MM-DD') AS fecha, tipo, destinatario, responsable, observaciones,
-          procedencia, procedencia_detalle AS "procedenciaDetalle", destino, destino_detalle AS "destinoDetalle",
+    sql`SELECT id AS numero, to_char(fecha, 'YYYY-MM-DD') AS fecha, tipo, responsable, observaciones,
+          procedencia, procedencia_detalle AS "procedenciaDetalle", procedencia_cuit AS "procedenciaCuit",
+          destino, destino_detalle AS "destinoDetalle", destino_cuit AS "destinoCuit",
           anulado, anulado_motivo AS "anuladoMotivo",
           to_char(anulado_en AT TIME ZONE 'America/Argentina/Buenos_Aires', 'DD/MM/YYYY HH24:MI') AS "anuladoEn",
           to_char(modificado_en AT TIME ZONE 'America/Argentina/Buenos_Aires', 'DD/MM/YYYY HH24:MI') AS "modificadoEn",
@@ -383,9 +395,9 @@ export async function guardarRemito(r: RemitoNuevo): Promise<number> {
   const movimientos = movimientosDe(r);
   const [resultado] = await conexion().query(
     `WITH remito AS (
-       INSERT INTO remitos (fecha, tipo, responsable, observaciones, destinatario,
-                            procedencia, procedencia_detalle, destino, destino_detalle)
-       VALUES ($2, $3, $4, $5, $6, $7, $8, $9, $10)
+       INSERT INTO remitos (fecha, tipo, responsable, observaciones,
+                            procedencia, procedencia_detalle, procedencia_cuit, destino, destino_detalle, destino_cuit)
+       VALUES ($2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING id
      ), guardados AS (
        INSERT INTO movimientos (remito_id, linea, deposito, codigo, presentacion, tamano, tamano_detalle, cantidad)
@@ -398,8 +410,8 @@ export async function guardarRemito(r: RemitoNuevo): Promise<number> {
      )
      SELECT id AS numero FROM remito`,
     [
-      movimientos, r.fecha, r.tipo, r.responsable, r.observaciones, r.destinatario,
-      r.procedencia, r.procedenciaDetalle, r.destino, r.destinoDetalle,
+      movimientos, r.fecha, r.tipo, r.responsable, r.observaciones,
+      r.procedencia, r.procedenciaDetalle, r.procedenciaCuit, r.destino, r.destinoDetalle, r.destinoCuit,
     ],
   );
   return Number(resultado.numero);
@@ -431,9 +443,10 @@ export async function modificarRemito(numero: number, r: RemitoNuevo): Promise<b
   await prepararBase();
   const [resultado] = await conexion().query(
     `WITH remito AS (
-       UPDATE remitos SET fecha = $2, tipo = $3, modificado_por = $4, observaciones = $5, destinatario = $6,
-              procedencia = $7, procedencia_detalle = $8, destino = $9, destino_detalle = $10, modificado_en = now()
-       WHERE id = $11 AND NOT anulado
+       UPDATE remitos SET fecha = $2, tipo = $3, modificado_por = $4, observaciones = $5,
+              procedencia = $6, procedencia_detalle = $7, procedencia_cuit = $8, destino = $9, destino_detalle = $10,
+              destino_cuit = $11, modificado_en = now()
+       WHERE id = $12 AND NOT anulado
        RETURNING id
      ), borrados AS (
        DELETE FROM movimientos WHERE remito_id IN (SELECT id FROM remito)
@@ -447,8 +460,8 @@ export async function modificarRemito(numero: number, r: RemitoNuevo): Promise<b
      )
      SELECT count(*)::int AS cambiados FROM remito`,
     [
-      movimientosDe(r), r.fecha, r.tipo, r.responsable, r.observaciones, r.destinatario,
-      r.procedencia, r.procedenciaDetalle, r.destino, r.destinoDetalle, numero,
+      movimientosDe(r), r.fecha, r.tipo, r.responsable, r.observaciones,
+      r.procedencia, r.procedenciaDetalle, r.procedenciaCuit, r.destino, r.destinoDetalle, r.destinoCuit, numero,
     ],
   );
   return resultado.cambiados === 1;
@@ -610,4 +623,39 @@ export async function cambiarActivo(usuarioId: number, activo: boolean): Promise
     sql`UPDATE usuarios SET activo = ${activo} WHERE id = ${usuarioId}`,
     sql`DELETE FROM sesiones WHERE usuario_id = ${usuarioId} AND NOT ${activo}`,
   ]);
+}
+
+// ---------- Ingreso a ARCA (ver lib/arca.ts) ----------
+
+export interface TicketArca {
+  token: string;
+  firma: string;
+}
+
+/** El ticket de ARCA guardado, si todavía le quedan más de 10 minutos de vida. */
+export async function leerTicketArca(servicio: string, entorno: string): Promise<TicketArca | null> {
+  await prepararBase();
+  const [fila] = await conexion()`
+    SELECT token, firma FROM arca_tickets
+    WHERE servicio = ${servicio} AND entorno = ${entorno} AND vence > now() + interval '10 minutes'`;
+  return (fila as TicketArca | undefined) ?? null;
+}
+
+export async function guardarTicketArca(servicio: string, entorno: string, ticket: TicketArca, vence: Date): Promise<void> {
+  await prepararBase();
+  await conexion()`
+    INSERT INTO arca_tickets (servicio, entorno, token, firma, vence)
+    VALUES (${servicio}, ${entorno}, ${ticket.token}, ${ticket.firma}, ${vence.toISOString()})
+    ON CONFLICT (servicio, entorno) DO UPDATE SET token = EXCLUDED.token, firma = EXCLUDED.firma, vence = EXCLUDED.vence`;
+}
+
+/** Lo último que se averiguó de un CUIT en ARCA, para no volver a consultar el mismo (por ejemplo, al modificar). */
+export async function nombreDeCuitUsado(cuit: string): Promise<string | null> {
+  await prepararBase();
+  const [fila] = await conexion()`
+    SELECT nombre FROM (
+      SELECT procedencia_detalle AS nombre, id FROM remitos WHERE procedencia_cuit = ${cuit}
+      UNION ALL SELECT destino_detalle, id FROM remitos WHERE destino_cuit = ${cuit}
+    ) x WHERE nombre <> '' ORDER BY id DESC LIMIT 1`;
+  return fila ? String(fila.nombre) : null;
 }

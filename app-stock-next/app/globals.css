@@ -125,6 +125,9 @@ label { display: block; margin: 14px 0 6px; font-weight: 600; font-size: .9rem; 
 .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 /* El renglón que aparece debajo del desplegable al elegir "Especificar". */
 .renglon-extra { margin-top: 8px; }
+/* Aviso debajo del CUIT: lo que se encontró, o por qué no. */
+.cuit-aviso { margin-top: 4px; color: var(--verde-oscuro); }
+.cuit-aviso.mal { color: var(--rojo); }
 
 .tipos { display: flex; gap: 8px; }
 .tipos button {
@@ -261,7 +264,6 @@ button.quitar:hover { background: var(--rojo-claro); color: var(--rojo); }
   display: block; margin-top: 8px; color: var(--verde-oscuro); font-weight: 700;
   font-family: var(--fuente-titulos), sans-serif;
 }
-.remito-destinatario { color: var(--texto); font-weight: 600; }
 
 /* ---------- Remito impreso (como los presupuestos de Native) ---------- */
 

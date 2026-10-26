@@ -4,3 +4,10 @@ node_modules/
 # Credenciales: nunca se suben a GitHub.
 .env
 .env*.local
+
+# Certificado de ARCA: la clave privada nunca se sube a GitHub.
+certificados/
+*.key
+*.pem
+*.csr
+*.crt

@@ -30,3 +30,5 @@ Los mensajes de commit van en español. Subir (push) solo cuando el usuario lo p
   palmeras y frutales.
   Usa la estética de la marca Native (nativetrees.com.ar): colores en `app/globals.css`, logo en `public/`. La conexión está en `app-stock-next/.env.local`, que nunca se sube ni se muestra en el chat.
   Ojo: la app local usa la misma base que la publicada; borrar lo que se cargue al probar.
+  Proveedores y clientes llevan CUIT, con búsqueda del nombre en ARCA (necesita un certificado: ver el README).
+  La clave privada de ese certificado está en `app-stock-next/certificados/`: nunca se sube ni se muestra.

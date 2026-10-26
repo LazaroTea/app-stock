@@ -1,5 +1,6 @@
 // Cálculos y reglas que se usan tanto en el servidor como en la pantalla.
 // El stock nunca se guarda: la base de datos lo calcula sumando los movimientos (ver lib/almacen.ts).
+import { formatearCuit } from './cuit';
 import type { Especie, Stock, StockPorDeposito, TipoMovimiento } from './tipos';
 
 /** Los depósitos de Native: cada uno lleva su propio stock. */
@@ -118,8 +119,10 @@ export function buscarEspecie(especies: Especie[], texto: string): Especie | und
 }
 
 // "Proveedor" + "Vivero El Ceibo" -> "Proveedor (Vivero El Ceibo)"; "Goya" -> "Goya".
-export function etiquetaLugar(lugar: string, detalle: string): string {
-  return LUGARES_A_ESPECIFICAR.includes(lugar) && detalle ? `${lugar} (${detalle})` : lugar;
+// Con CUIT: "Cliente (Vivero X · CUIT 30-71792140-9)".
+export function etiquetaLugar(lugar: string, detalle: string, cuit = ''): string {
+  if (!LUGARES_A_ESPECIFICAR.includes(lugar) || !detalle) return lugar;
+  return `${lugar} (${detalle}${cuit ? ` · CUIT ${formatearCuit(cuit)}` : ''})`;
 }
 
 // 12 -> "000012"
