@@ -8,13 +8,11 @@ const SECCIONES = [
   { ruta: '/ultimos', nombre: 'Últimos' },
 ];
 
-// "usuarios": si se muestra la pestaña Usuarios (solo administradores).
-export default function Navegacion({ usuarios }: { usuarios: boolean }) {
+export default function Navegacion() {
   const actual = usePathname();
-  const secciones = usuarios ? [...SECCIONES, { ruta: '/usuarios', nombre: 'Usuarios' }] : SECCIONES;
   return (
     <nav>
-      {secciones.map(s => (
+      {SECCIONES.map(s => (
         <Link key={s.ruta} href={s.ruta} className={actual === s.ruta ? 'activo' : undefined}>
           {s.nombre}
         </Link>

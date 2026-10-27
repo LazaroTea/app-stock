@@ -5,7 +5,8 @@ import { useEffect, useRef, useState } from 'react';
 import { cerrarSesion } from './sesion';
 
 // Arriba a la derecha: el nombre y el rol de quien ingresó. Tocándolo se abre un menú con Mi clave y Salir.
-export default function MenuUsuario({ nombre, rol }: { nombre: string; rol: string }) {
+// "puedeAdministrar": los administradores tienen además la opción Usuarios.
+export default function MenuUsuario({ nombre, rol, puedeAdministrar }: { nombre: string; rol: string; puedeAdministrar: boolean }) {
   const [abierto, setAbierto] = useState(false);
   const caja = useRef<HTMLDivElement>(null);
   const ruta = usePathname();
@@ -45,6 +46,11 @@ export default function MenuUsuario({ nombre, rol }: { nombre: string; rol: stri
       </button>
       {abierto && (
         <div className="usuario-menu" role="menu">
+          {puedeAdministrar && (
+            <Link href="/usuarios" role="menuitem">
+              Usuarios
+            </Link>
+          )}
           <Link href="/clave" role="menuitem">
             Mi clave
           </Link>

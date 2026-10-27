@@ -69,7 +69,7 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 ## Cómo se usa
 
 - **Ingresar:** al abrir la app se elige el **nombre** y se escribe la **clave**. La sesión queda abierta 30
-  días en ese dispositivo (celu o compu). Arriba a la derecha se ve quién ingresó y su rol; tocándolo se abre un menú con **Mi clave** y **Salir**.
+  días en ese dispositivo (celu o compu). Arriba a la derecha se ve quién ingresó y su rol; tocándolo se abre un menú con **Mi clave** y **Salir** (a los administradores también les aparece **Usuarios**).
 
   | Usuario | Rol | Qué puede hacer |
   |---|---|---|
@@ -85,7 +85,7 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 - **Clave equivocada:** después de **5 intentos equivocados seguidos**, el usuario queda bloqueado
   **15 minutos**. Un administrador lo puede desbloquear antes dándole una clave provisoria.
 - Las claves se guardan encriptadas: ni mirando la base se puede leer cuál es.
-- **Usuarios** (pestaña solo para administradores):
+- **Usuarios** (solo para administradores; está en el menú de arriba a la derecha, con el nombre):
   - **Agregar usuario:** nombre y rol. La app crea una **clave provisoria** de 6 números y la muestra **una sola
     vez**: hay que anotarla y pasársela a la persona (en persona o por mensaje privado). Al ingresar, elige la suya.
   - **Clave provisoria:** para quien se olvidó la clave o quedó bloqueado. La clave anterior deja de servir.

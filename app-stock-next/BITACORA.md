@@ -652,3 +652,34 @@ sus estilos, el dato `lema` de `lib/empresa.ts` y la mención en el README. Si a
 se agrega `lema` en `lib/empresa.ts` y se muestra en `app/remitos/[numero]/page.tsx`.
 
 **Probado:** compila sin errores. No se revisó a ojo en pantalla.
+
+## 2026-10-26: la activación de ARCA queda para después de revisar la seguridad
+
+**Decisión del usuario:** sacar el certificado en ARCA y activar la búsqueda de nombre por CUIT **más adelante, después
+de revisar toda la seguridad** de la app.
+
+**Estado:** la función ya está hecha, probada y publicada, pero **apagada** (sin certificado, el CUIT se valida y se
+guarda, y el nombre se escribe a mano). Los archivos de `app-stock-next/certificados/` (clave privada y pedido) ya
+están generados y fuera de GitHub. No hay que hacer nada hasta retomarlo; los pasos están en el README ("Buscar un
+CUIT en ARCA").
+
+**Pendiente (en este orden)**
+- [ ] **Revisión general de seguridad** de la app (claves, sesiones, permisos, datos guardados en el celu, variables de
+      Vercel, base de datos).
+- [ ] Cambiar la contraseña de la base en Neon (la hace el usuario, con la guía del README).
+- [ ] Después: sacar el certificado en ARCA y activar la búsqueda por CUIT (pasos 1 a 4 del README).
+- [ ] Probar el uso sin señal en un celu real, con modo avión.
+- [ ] Más adelante: revisar si se vuelve a limitar por stock (el usuario lo quiere probar después).
+- [ ] Listado de especies: por ahora está bien; quizás se retome.
+
+## 2026-10-26: Usuarios pasa al menú del nombre
+
+**Pedido:** la sección Usuarios dentro del menú desplegable del nombre.
+
+**Qué se hizo:** se sacó la pestaña **Usuarios** de la barra y ahora es una opción del menú de arriba a la derecha
+(**Usuarios**, **Mi clave**, **Salir**), solo para administradores. Los colaboradores ven solo Mi clave y Salir. La
+barra queda con tres pestañas (Stock, Cargar, Últimos), lo que también ordena el celu.
+
+**Probado:** con un usuario administrador de prueba (ya borrado): la barra tiene 3 pestañas y el menú muestra
+Usuarios, Mi clave y Salir. Compila sin errores. No se pudo ver la captura en tamaño celu (el navegador integrado
+se trabó); el cambio de tamaño no toca estilos nuevos.
