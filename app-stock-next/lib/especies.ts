@@ -1,4 +1,5 @@
-// Listado de especies del vivero: árboles y arbustos NATIVOS de Argentina, PALMERAS (nativas y exóticas)
+// Listado de especies del vivero: árboles y arbustos NATIVOS de Argentina, algunos árboles EXÓTICOS (sauce llorón,
+// fresnos), PALMERAS (nativas y exóticas)
 // y FRUTALES (olivo, cítricos, carozo, pepita y otros).
 //
 // No es un listado oficial: SENASA no publica uno de especies nativas. Su listado de "especies priorizadas"
@@ -53,7 +54,6 @@ export const ESPECIES: Especie[] = [
   arbol('QBL', 'Quebracho blanco', 'Aspidosperma quebracho-blanco', 'Chaco, Monte'),
   arbol('QCO', 'Quebracho colorado chaqueño', 'Schinopsis balansae', 'Chaco'),
   arbol('SAU', 'Sauce criollo', 'Salix humboldtiana', 'Delta y ribera'),
-  arbol('SLL', 'Sauce llorón', 'Salix babylonica', 'Exótica'),
   arbol('SDT', 'Sombra de toro', 'Jodina rhombifolia', 'Espinal, Chaco'),
   arbol('TAL', 'Tala', 'Celtis tala', 'Espinal, Pampa, Chaco'),
   arbol('TIM', 'Timbó', 'Enterolobium contortisiliquum', 'Chaco, Selva paranaense, Yungas'),
@@ -182,6 +182,18 @@ export const ESPECIES: Especie[] = [
   arbol('RAD', 'Radal', 'Lomatia hirsuta', 'Patagonia andina'),
   arbol('RAU', 'Raulí', 'Nothofagus alpina', 'Patagonia andina'),
   arbol('RPE', 'Roble pellín', 'Nothofagus obliqua', 'Patagonia andina'),
+
+  // Árboles exóticos (ornamentales y de arbolado). Los fresnos: en Argentina se documentan el fresno americano
+  // (Fraxinus pennsylvanica, cultivado y naturalizado; Achinelli y Delucchi 1999 concluyeron que el "fresno
+  // americano" del país es esta especie y no F. americana), el europeo (F. excelsior, también en su forma dorada
+  // 'Aurea', muy plantada en Buenos Aires) y el de Arizona (F. velutina, que algunos autores tratan como
+  // subespecie de F. pennsylvanica). No se agregaron otros fresnos (F. angustifolia, F. ornus, F. uhdei...) porque
+  // no hay registros en Argentina.
+  arbol('SLL', 'Sauce llorón', 'Salix babylonica', 'Exótica'),
+  arbol('FRA', 'Fresno americano', 'Fraxinus pennsylvanica', 'Exótica'),
+  arbol('FRZ', 'Fresno de Arizona', 'Fraxinus velutina', 'Exótica'),
+  arbol('FRD', 'Fresno dorado', "Fraxinus excelsior 'Aurea'", 'Exótica'),
+  arbol('FRE', 'Fresno europeo', 'Fraxinus excelsior', 'Exótica'),
 
   // Palmeras nativas (además de Pindó, Caranday y Palmera yatay, que están más arriba)
   palmera('BPA', 'Yatay poñí', 'Butia paraguayensis', 'Selva paranaense'),

@@ -697,3 +697,31 @@ que falta). El listado pasó de 179 a **180** especies; se actualizó el README.
   también se vende el híbrido *Salix × sepulcralis*). Si el vivero vende otro, se corrige el nombre científico
   desde el panel de Neon (tabla `especies`).
 - El código `SLL` no se puede cambiar una vez que la especie tiene movimientos.
+
+## 2026-10-28: se agregan los fresnos
+
+**Pedido:** sumar todos los fresnos que haya en Argentina.
+
+**Qué se hizo:** se agregaron **4 fresnos** (todos grupo Árbol, región Exótica, sin stock mínimo), y se
+juntaron con el sauce llorón en una sección nueva de "Árboles exóticos" de `lib/especies.ts`. El listado pasó
+de 180 a **184** especies. Se cargaron en la base con `npm.cmd run cargar-especies` (no se tocó nada existente).
+
+| Código | Nombre | Científico |
+|---|---|---|
+| `FRA` | Fresno americano | *Fraxinus pennsylvanica* |
+| `FRZ` | Fresno de Arizona | *Fraxinus velutina* |
+| `FRD` | Fresno dorado | *Fraxinus excelsior* 'Aurea' |
+| `FRE` | Fresno europeo | *Fraxinus excelsior* |
+
+**Cómo se eligieron (para que el vivero lo revise):** solo entraron los que tienen registro en Argentina.
+- *F. pennsylvanica*: es el "fresno americano" cultivado y naturalizado del país (Achinelli y Delucchi, 1999,
+  concluyen que todo lo que se llama "americano" en Argentina es esta especie).
+- *F. excelsior*: lo registra Kew como introducido en el Noreste, y lo producen los viveros provinciales de Mendoza;
+  la forma dorada ('Aurea') figura en el Plan de Arbolado de Buenos Aires.
+- *F. velutina*: Kew lo cita como introducido en el Noreste; algunos autores lo tratan como subespecie de
+  *F. pennsylvanica* (puede ser lo mismo que el fresno americano: el vivero decide si lo vende aparte).
+- **No se agregaron** *F. americana* (el estudio de 1999 dice que no está en el país, aunque un inventario de
+  Resistencia la nombra: probablemente confundida con la anterior), ni *F. angustifolia*, *F. ornus*, *F. uhdei*,
+  *F. chinensis*, que no tienen registros en Argentina.
+- Si el vivero vende otro (o quiere separar o juntar alguno), se agrega o se quita en `lib/especies.ts` y se corre
+  de nuevo `cargar-especies` (para quitar una, se borra su fila en Neon si no tiene movimientos).
