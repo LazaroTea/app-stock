@@ -750,3 +750,22 @@ pasó de 184 a **185** especies. Se cargó en la base con `cargar-especies`.
 **Nota:** antes no se había incluido *F. angustifolia* porque no encontré registros en la bibliografía argentina;
 se agrega ahora porque el vivero la trabaja. Si el nombre científico que usan es otro, se corrige en la tabla
 `especies` de Neon.
+
+## 2026-10-28: Stock como tabla angosta con detalle al tocar
+
+**Pedido:** ver opciones para que el listado de plantas condense la información, más parecido a una lista.
+
+**Opciones que se mostraron:** (1) planilla con una fila por variante y columnas por depósito, (2) una línea por
+especie con desplegable, (3) especie con sus variantes siempre a la vista, (4) tabla angosta solo con lo esencial.
+**Se eligió la 4.**
+
+**Qué se hizo:** la pantalla Stock ahora es una tabla de tres columnas: **código, especie y total**. Tocando una
+fila se abre el detalle (nombre científico, región, grupo, aviso de mínimo, stock por depósito con "Todos", y
+presentaciones y tamaños); tocándola otra vez se cierra, y se pueden tener varias abiertas. Las bajo el mínimo llevan
+una marca roja. Reemplaza el listado de dos pasos anterior (nombre, detalle y total en la misma fila). No cambió
+ningún dato ni cuenta, solo cómo se ve.
+
+**Probado** con un usuario de prueba (ya borrado) y capturas con Chrome en tamaño celu (375 px) y compu (1100 px):
+sin desbordes, la fila abre y cierra el detalle, y se ve bien con "Todas, con y sin stock". Compila sin errores.
+
+**Si no convence:** las otras opciones se pueden armar (la planilla por variante es la más parecida a un inventario).

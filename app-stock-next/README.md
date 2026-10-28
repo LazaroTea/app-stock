@@ -94,10 +94,11 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
     Se puede **dar de alta** otra vez.
   - Nadie se puede cambiar el rol ni dar de baja a sí mismo: así siempre queda al menos un administrador.
   - De cada uno se ve el último ingreso y si está bloqueado o con clave provisoria.
-- **Stock:** arriba se elige qué ver: **Todos** (los tres depósitos sumados) o un depósito. Es un **listado**, una fila por
-  especie: el nombre a la izquierda, el detalle al costado y el total a la derecha (en el celu, el detalle va
-  debajo del nombre). El detalle muestra las presentaciones y tamaños (ej. "Raíz desnuda · 12-14: 7"); con "Todos",
-  también cuánto hay en cada depósito ("Pilar: −2 · Goya: 6"). Los números en negativo salen en rojo.
+- **Stock:** arriba se elige qué ver: **Todos** (los tres depósitos sumados) o un depósito. Es una **tabla angosta**, una fila por
+  especie: código, nombre y total. **Tocando una fila se abre el detalle** (y tocándola de nuevo se cierra): nombre
+  científico, región, presentaciones y tamaños (ej. "Raíz desnuda · 12-14: 7") y, con "Todos", cuánto hay en cada
+  depósito ("Pilar: −2 · Goya: 6"). Los números en negativo salen en rojo, y las especies bajo el mínimo tienen una
+  marca roja a la izquierda.
   Hay tres números: total de plantas, especies con stock y especies bajo el mínimo (tocándolo se ven solo
   esas). De entrada se ven solo las especies **con stock**; con los filtros se elige una **región** o se ven
   **todas**, y se puede ver **solo árboles**, **solo palmeras** o **solo frutales**. Al buscar por nombre
@@ -158,8 +159,8 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 
 | Pantalla | Cómo se acomoda |
 |---|---|
-| Celu (hasta 639 px de ancho) | Pestañas abajo, al alcance del pulgar. En Stock, el detalle de cada especie va debajo del nombre. |
-| Tablet (640 a 1023 px) | Pestañas arriba, en el encabezado. En Stock, nombre, detalle y total en la misma fila. |
+| Celu (hasta 639 px de ancho) | Pestañas abajo, al alcance del pulgar. La tabla de Stock ocupa todo el ancho. |
+| Tablet (640 a 1023 px) | Pestañas arriba, en el encabezado. Igual: una fila por especie, detalle al tocarla. |
 | Compu (1024 px o más) | Igual que la tablet, más ancho. En **Cargar**, el remito se arma al costado, siempre a la vista. |
 
 ## Archivos

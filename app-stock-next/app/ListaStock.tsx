@@ -19,6 +19,14 @@ export default function ListaStock({ especies, presentaciones, tamanos, stock: p
   const [verTodas, setVerTodas] = useState(false);
   const [region, setRegion] = useState('');
   const [grupo, setGrupo] = useState('');
+  // Las especies con el detalle abierto (por código).
+  const [abiertas, setAbiertas] = useState<Set<string>>(new Set());
+  const alternar = (codigo: string) =>
+    setAbiertas(antes => {
+      const ahora = new Set(antes);
+      if (!ahora.delete(codigo)) ahora.add(codigo);
+      return ahora;
+    });
 
   const stock = stockDe(porDeposito, deposito);
   const regiones = [...new Set(especies.flatMap(e => regionesDe(e)))].sort((a, b) => a.localeCompare(b, 'es'));
@@ -112,58 +120,94 @@ export default function ListaStock({ especies, presentaciones, tamanos, stock: p
         ) : (
           <p className="resumen">No hay especies que coincidan.</p>
         ))}
-      {/* Una fila por especie: el nombre a la izquierda, el detalle al costado y el total a la derecha. */}
-      <div className="lista-especies">
-        {lista.map(e => {
-          const bajo = bajoMinimo(stock, e);
-          const total = totalEspecie(stock, e.codigo);
-          const porPresentacion = stockPorPresentacion(stock, e.codigo, presentaciones, tamanos);
-          // Con "Todos", cuánto hay en cada depósito.
-          const porDepositoEspecie = DEPOSITOS.map(d => [d, totalEspecie(porDeposito[d] ?? {}, e.codigo)] as const).filter(
-            ([, n]) => n !== 0,
-          );
-          return (
-            <div key={e.codigo} className={bajo ? 'especie bajo' : porPresentacion.length ? 'especie' : 'especie sin-stock'}>
-              <div className="especie-nombre">
-                <div className="nombre">{e.comun}</div>
-                <div className="cientifico">
-                  {e.cientifico} · {e.codigo}
-                </div>
-                <div className="region">
-                  {e.grupo !== 'Árbol' && (
-                    <span className="etiqueta" title="Especie priorizada por SENASA (Res. 64/2026)">
-                      {e.grupo}
-                    </span>
+      {/* Tabla angosta: código, especie y total. Tocando una fila se abre el detalle (presentaciones, tamaños,
+          depósitos). */}
+      {lista.length > 0 && (
+        <div className="tabla tabla-stock">
+          <table>
+            <thead>
+              <tr>
+                <th>Cód.</th>
+                <th>Especie</th>
+                <th className="num">Total</th>
+              </tr>
+            </thead>
+            {lista.map(e => {
+              const bajo = bajoMinimo(stock, e);
+              const total = totalEspecie(stock, e.codigo);
+              const porPresentacion = stockPorPresentacion(stock, e.codigo, presentaciones, tamanos);
+              // Con "Todos", cuánto hay en cada depósito.
+              const porDepositoEspecie = DEPOSITOS.map(d => [d, totalEspecie(porDeposito[d] ?? {}, e.codigo)] as const).filter(
+                ([, n]) => n !== 0,
+              );
+              const abierta = abiertas.has(e.codigo);
+              const clase = [bajo ? 'bajo' : '', porPresentacion.length === 0 ? 'sin-stock' : '', abierta ? 'abierta' : '']
+                .filter(Boolean)
+                .join(' ');
+              return (
+                <tbody key={e.codigo} className={clase || undefined}>
+                  <tr className="fila-especie" onClick={() => alternar(e.codigo)}>
+                    <td className="cod">{e.codigo}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="boton-fila"
+                        aria-expanded={abierta}
+                        onClick={ev => {
+                          ev.stopPropagation(); // el clic ya lo maneja la fila
+                          alternar(e.codigo);
+                        }}
+                      >
+                        <span className="flechita" aria-hidden="true">
+                          {abierta ? '▾' : '▸'}
+                        </span>
+                        {e.comun}
+                      </button>
+                    </td>
+                    <td className={total < 0 ? 'num negativo' : 'num total-fila'}>{total}</td>
+                  </tr>
+                  {abierta && (
+                    <tr className="detalle-especie">
+                      <td colSpan={3}>
+                        <div className="cientifico">{e.cientifico}</div>
+                        <div className="region">
+                          {e.grupo !== 'Árbol' && (
+                            <span className="etiqueta" title="Especie priorizada por SENASA (Res. 64/2026)">
+                              {e.grupo}
+                            </span>
+                          )}
+                          {e.region}
+                        </div>
+                        {bajo && <div className="aviso">Por debajo del mínimo ({e.minimo})</div>}
+                        {!deposito && porDepositoEspecie.length > 0 && (
+                          <div className="por-deposito">
+                            {porDepositoEspecie.map(([d, n]) => (
+                              <span key={d} className={n < 0 ? 'negativo' : undefined}>
+                                {d}: <b>{n}</b>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {porPresentacion.length > 0 ? (
+                          <div className="presentaciones">
+                            {porPresentacion.map(([t, n]) => (
+                              <span key={t} className={n < 0 ? 'chip negativo' : 'chip'}>
+                                {t}: <b>{n}</b>
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="ayuda">Sin stock{deposito ? ' en ' + deposito : ''}.</div>
+                        )}
+                      </td>
+                    </tr>
                   )}
-                  {e.region}
-                </div>
-              </div>
-              <div className="especie-detalle">
-                {bajo && <div className="aviso">Por debajo del mínimo ({e.minimo})</div>}
-                {!deposito && porDepositoEspecie.length > 0 && (
-                  <div className="por-deposito">
-                    {porDepositoEspecie.map(([d, n]) => (
-                      <span key={d} className={n < 0 ? 'negativo' : undefined}>
-                        {d}: <b>{n}</b>
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {porPresentacion.length > 0 && (
-                  <div className="presentaciones">
-                    {porPresentacion.map(([t, n]) => (
-                      <span key={t} className={n < 0 ? 'chip negativo' : 'chip'}>
-                        {t}: <b>{n}</b>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className={total < 0 ? 'total negativo' : 'total'}>{total}</div>
-            </div>
-          );
-        })}
-      </div>
+                </tbody>
+              );
+            })}
+          </table>
+        </div>
+      )}
     </section>
   );
 }

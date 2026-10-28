@@ -183,20 +183,25 @@ button.indicador { cursor: pointer; }
 .filtros select { flex: 1 1 140px; min-width: 0; }
 
 .grilla { display: grid; grid-template-columns: 1fr; gap: 10px; }
-/* Stock: una fila por especie (nombre, detalle y total). */
-.lista-especies { background: var(--blanco); border: 1px solid var(--borde); border-radius: 10px; overflow: hidden; }
-.especie {
-  display: grid; grid-template-columns: 1fr auto; grid-template-areas: "nombre total" "detalle detalle";
-  gap: 6px 12px; padding: 12px; border-bottom: 1px solid var(--borde); border-left: 5px solid transparent;
+/* Stock: tabla angosta (código, especie, total); tocando una fila se abre el detalle. */
+.tabla-stock table { table-layout: auto; }
+.tabla-stock tbody { border-bottom: 1px solid var(--borde); }
+.tabla-stock tbody:last-child { border-bottom: 0; }
+.tabla-stock td { border-bottom: 0; padding: 10px 8px; }
+.fila-especie { cursor: pointer; }
+.fila-especie:hover { background: var(--fondo); }
+.tabla-stock tbody.bajo .fila-especie td:first-child { box-shadow: inset 4px 0 0 var(--rojo); }
+.tabla-stock td.cod { width: 1%; white-space: nowrap; font-family: var(--fuente-titulos), monospace; font-size: .8rem; color: var(--gris); }
+.tabla-stock td.total-fila { font-family: var(--fuente-titulos), sans-serif; font-weight: 700; font-size: 1.05rem; color: var(--verde); }
+.tabla-stock tbody.sin-stock td.total-fila { color: var(--salvia); font-weight: 500; }
+.tabla-stock tbody.bajo td.total-fila { color: var(--rojo); }
+.boton-fila {
+  display: flex; align-items: center; gap: 8px; width: 100%; padding: 0; border: 0; background: none; cursor: pointer;
+  text-align: left; color: var(--verde-oscuro); font-family: var(--fuente-titulos), sans-serif; font-weight: 600; font-size: .95rem;
 }
-.especie:last-child { border-bottom: 0; }
-.especie.bajo { border-left-color: var(--rojo); }
-.especie-nombre { grid-area: nombre; }
-.especie-detalle { grid-area: detalle; }
-.especie-detalle:empty { display: none; }
-.especie .total { grid-area: total; align-self: start; }
-.especie.sin-stock .total { color: var(--salvia); font-weight: 500; }
-.especie.bajo .total { color: var(--rojo); }
+.boton-fila .flechita { color: var(--gris); width: 1em; }
+.detalle-especie td { background: var(--fondo); padding: 8px 12px 14px 36px; }
+.detalle-especie > td > * + * { margin-top: 6px; }
 .tarjeta { background: var(--blanco); border: 1px solid var(--borde); border-radius: 10px; padding: 12px; }
 .tarjeta.bajo { border-left: 5px solid var(--rojo); }
 .fila { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
@@ -421,9 +426,6 @@ td.num.suma { color: var(--verde); font-weight: 600; }
   .indicador .nombre-indicador { font-size: .72rem; }
 
   .grilla { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-  /* Tablet y compu: nombre a la izquierda, detalle al costado y total a la derecha. */
-  .especie { grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr) 64px; grid-template-areas: "nombre detalle total"; align-items: start; gap: 12px 20px; }
-  .especie .total { text-align: right; }
 
   /* Buscador y filtros en una sola fila cuando entran. */
   .filtros input[type=search] { flex: 2 1 240px; }
