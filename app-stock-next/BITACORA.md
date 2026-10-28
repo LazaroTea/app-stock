@@ -725,3 +725,16 @@ de 180 a **184** especies. Se cargaron en la base con `npm.cmd run cargar-especi
   *F. chinensis*, que no tienen registros en Argentina.
 - Si el vivero vende otro (o quiere separar o juntar alguno), se agrega o se quita en `lib/especies.ts` y se corre
   de nuevo `cargar-especies` (para quitar una, se borra su fila en Neon si no tiene movimientos).
+
+## 2026-10-28: "fresno rojo"
+
+**Pedido:** sumar el fresno rojo.
+
+**Qué se encontró:** en Argentina "fresno rojo" (y "fresno verde") son otros nombres del **fresno americano**
+(*Fraxinus pennsylvanica*), que ya estaba cargado (`FRA`). Para no tener la misma especie dos veces (el stock
+quedaría partido en dos), no se agregó una especie nueva: se cambió el nombre de `FRA` a **"Fresno americano
+(fresno rojo)"**, así aparece al buscar "rojo" en Cargar y en Stock. Cambió el nombre en `lib/especies.ts` y en la
+base (la especie no tenía movimientos, así que no afectó nada).
+
+**Si el vivero vende otro "fresno rojo"** (por ejemplo una variedad distinta de otoño colorado), se agrega como
+especie aparte con su nombre científico o cultivar.

@@ -190,7 +190,8 @@ export const ESPECIES: Especie[] = [
   // subespecie de F. pennsylvanica). No se agregaron otros fresnos (F. angustifolia, F. ornus, F. uhdei...) porque
   // no hay registros en Argentina.
   arbol('SLL', 'Sauce llorón', 'Salix babylonica', 'Exótica'),
-  arbol('FRA', 'Fresno americano', 'Fraxinus pennsylvanica', 'Exótica'),
+  // "Fresno rojo" y "fresno verde" son otros nombres de esta misma especie (Fraxinus pennsylvanica).
+  arbol('FRA', 'Fresno americano (fresno rojo)', 'Fraxinus pennsylvanica', 'Exótica'),
   arbol('FRZ', 'Fresno de Arizona', 'Fraxinus velutina', 'Exótica'),
   arbol('FRD', 'Fresno dorado', "Fraxinus excelsior 'Aurea'", 'Exótica'),
   arbol('FRE', 'Fresno europeo', 'Fraxinus excelsior', 'Exótica'),
