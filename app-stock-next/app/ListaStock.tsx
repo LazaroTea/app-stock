@@ -136,10 +136,13 @@ export default function ListaStock({ especies, presentaciones, tamanos, stock: p
               const bajo = bajoMinimo(stock, e);
               const total = totalEspecie(stock, e.codigo);
               const porPresentacion = stockPorPresentacion(stock, e.codigo, presentaciones, tamanos);
-              // Con "Todos", cuánto hay en cada depósito.
-              const porDepositoEspecie = DEPOSITOS.map(d => [d, totalEspecie(porDeposito[d] ?? {}, e.codigo)] as const).filter(
-                ([, n]) => n !== 0,
-              );
+              // Para el detalle: cada depósito (el elegido arriba, o los tres) con sus presentaciones y tamaños.
+              const porDepositos = (deposito ? [deposito] : DEPOSITOS)
+                .map(d => {
+                  const items = stockPorPresentacion(porDeposito[d] ?? {}, e.codigo, presentaciones, tamanos);
+                  return [d, items, totalEspecie(porDeposito[d] ?? {}, e.codigo)] as const;
+                })
+                .filter(([, items]) => items.length > 0);
               const abierta = abiertas.has(e.codigo);
               const clase = [bajo ? 'bajo' : '', porPresentacion.length === 0 ? 'sin-stock' : '', abierta ? 'abierta' : '']
                 .filter(Boolean)
@@ -169,33 +172,33 @@ export default function ListaStock({ especies, presentaciones, tamanos, stock: p
                   {abierta && (
                     <tr className="detalle-especie">
                       <td colSpan={3}>
-                        <div className="cientifico">{e.cientifico}</div>
-                        <div className="region">
+                        <div className="cientifico">
+                          {e.cientifico}
                           {e.grupo !== 'Árbol' && (
                             <span className="etiqueta" title="Especie priorizada por SENASA (Res. 64/2026)">
                               {e.grupo}
                             </span>
                           )}
-                          {e.region}
                         </div>
                         {bajo && <div className="aviso">Por debajo del mínimo ({e.minimo})</div>}
-                        {!deposito && porDepositoEspecie.length > 0 && (
-                          <div className="por-deposito">
-                            {porDepositoEspecie.map(([d, n]) => (
-                              <span key={d} className={n < 0 ? 'negativo' : undefined}>
-                                {d}: <b>{n}</b>
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        {porPresentacion.length > 0 ? (
-                          <div className="presentaciones">
-                            {porPresentacion.map(([t, n]) => (
-                              <span key={t} className={n < 0 ? 'chip negativo' : 'chip'}>
-                                {t}: <b>{n}</b>
-                              </span>
-                            ))}
-                          </div>
+                        {/* Por depósito, y dentro de cada uno, sus presentaciones y tamaños. */}
+                        {porDepositos.length > 0 ? (
+                          porDepositos.map(([d, items, subtotal]) => (
+                            <div key={d} className="dep-bloque">
+                              <div className={subtotal < 0 ? 'dep-titulo negativo' : 'dep-titulo'}>
+                                <b>{d}</b>
+                                <b>{subtotal}</b>
+                              </div>
+                              <ul className="dep-lista">
+                                {items.map(([t, n]) => (
+                                  <li key={t} className={n < 0 ? 'negativo' : undefined}>
+                                    <span>{t}</span>
+                                    <b>{n}</b>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ))
                         ) : (
                           <div className="ayuda">Sin stock{deposito ? ' en ' + deposito : ''}.</div>
                         )}

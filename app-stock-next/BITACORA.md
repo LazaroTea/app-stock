@@ -769,3 +769,17 @@ ningún dato ni cuenta, solo cómo se ve.
 sin desbordes, la fila abre y cierra el detalle, y se ve bien con "Todas, con y sin stock". Compila sin errores.
 
 **Si no convence:** las otras opciones se pueden armar (la planilla por variante es la más parecida a un inventario).
+
+## 2026-10-28: detalle de Stock por depósito
+
+**Pedido:** (1) en el detalle de cada planta no mostrar la procedencia; (2) dejar el nombre científico sin mayor
+relevancia; (3) que al desplegar se vea un listado por depósito y, dentro de cada uno, las presentaciones.
+
+**Qué se hizo:** el detalle de una fila ahora muestra el nombre científico en chico y gris (con la etiqueta de
+grupo, Palmera o Frutal, al lado) y, por cada depósito con stock, un título con su subtotal y debajo una lista de
+"presentación · tamaño" con su cantidad. Con "Todos" aparecen los tres depósitos (los que tienen plantas); si se
+elige un depósito arriba, solo ese. Se sacó la región del detalle (el filtro **Región** sigue funcionando) y se
+borraron los estilos que quedaron sin uso (chips, línea de depósitos).
+
+**Probado** con un usuario de prueba (ya borrado) y capturas con Chrome en celu y compu: Aguaribay (Pilar y Goya
+con sus presentaciones) y Olivo (frutal, solo Goya) se ven bien, sin desbordes. Compila sin errores.

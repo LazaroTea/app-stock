@@ -95,10 +95,12 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
   - Nadie se puede cambiar el rol ni dar de baja a sí mismo: así siempre queda al menos un administrador.
   - De cada uno se ve el último ingreso y si está bloqueado o con clave provisoria.
 - **Stock:** arriba se elige qué ver: **Todos** (los tres depósitos sumados) o un depósito. Es una **tabla angosta**, una fila por
-  especie: código, nombre y total. **Tocando una fila se abre el detalle** (y tocándola de nuevo se cierra): nombre
-  científico, región, presentaciones y tamaños (ej. "Raíz desnuda · 12-14: 7") y, con "Todos", cuánto hay en cada
-  depósito ("Pilar: −2 · Goya: 6"). Los números en negativo salen en rojo, y las especies bajo el mínimo tienen una
-  marca roja a la izquierda.
+  especie: código, nombre y total. **Tocando una fila se abre el detalle** (y tocándola de nuevo se cierra): el nombre
+  científico (discreto) y, **por cada depósito**, su subtotal y debajo la lista de presentaciones y tamaños
+  (ej. "Goya 35: Envasado · 14-16: 10, Envasado · 16-18: 10…"). Con "Todos" se ven los tres depósitos (los que tienen
+  stock); eligiendo un depósito arriba, solo ese. Los números en negativo salen en rojo, y las especies bajo el
+  mínimo tienen una marca roja a la izquierda. La región (procedencia) ya no se muestra acá (sigue sirviendo para
+  el filtro "Región").
   Hay tres números: total de plantas, especies con stock y especies bajo el mínimo (tocándolo se ven solo
   esas). De entrada se ven solo las especies **con stock**; con los filtros se elige una **región** o se ven
   **todas**, y se puede ver **solo árboles**, **solo palmeras** o **solo frutales**. Al buscar por nombre

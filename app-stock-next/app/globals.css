@@ -202,12 +202,23 @@ button.indicador { cursor: pointer; }
 .boton-fila .flechita { color: var(--gris); width: 1em; }
 .detalle-especie td { background: var(--fondo); padding: 8px 12px 14px 36px; }
 .detalle-especie > td > * + * { margin-top: 6px; }
+/* Nombre científico: discreto, con la etiqueta de grupo (palmera, frutal) al lado. */
+.detalle-especie .cientifico { font-size: .85rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* Detalle por depósito: título con el subtotal y debajo la lista de presentaciones y tamaños. */
+.dep-bloque { max-width: 420px; }
+.dep-titulo {
+  display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px solid var(--borde);
+  font-family: var(--fuente-titulos), sans-serif; font-size: .9rem; color: var(--verde-oscuro);
+}
+.dep-lista { list-style: none; margin: 0; padding: 0; }
+.dep-lista li { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0 4px 12px; font-size: .9rem; }
+.dep-lista li + li { border-top: 1px dotted var(--borde); }
+.dep-lista li b { font-family: var(--fuente-titulos), sans-serif; }
 .tarjeta { background: var(--blanco); border: 1px solid var(--borde); border-radius: 10px; padding: 12px; }
 .tarjeta.bajo { border-left: 5px solid var(--rojo); }
 .fila { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
 .nombre { font-weight: 600; color: var(--verde-oscuro); }
 .cientifico { font-style: italic; color: var(--gris); font-size: .9rem; }
-.region { color: var(--gris); font-size: .8rem; margin-top: 4px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .etiqueta {
   background: var(--salvia-claro); color: var(--verde-oscuro); border-radius: 999px; padding: 1px 8px;
   font-family: var(--fuente-titulos), sans-serif; font-size: .65rem; font-weight: 600;
@@ -217,15 +228,11 @@ button.indicador { cursor: pointer; }
 .tarjeta.sin-stock .total { color: var(--salvia); font-weight: 500; }
 .bajo .total { color: var(--rojo); }
 .aviso { color: var(--rojo); font-size: .85rem; margin-top: 4px; }
-.presentaciones { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 /* Selector de depósito arriba del stock. */
 .depositos { margin-bottom: 12px; }
 /* Con "Todos": cuánto hay en cada depósito. */
-.por-deposito { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-size: .85rem; color: var(--verde-oscuro); }
 /* Stock en negativo (se permite: se sacó más de lo cargado). */
-.negativo, .total.negativo, .indicador .valor.negativo, .chip.negativo b { color: var(--rojo); }
-.chip.negativo { border-color: var(--rojo); }
-.chip { background: var(--fondo); border: 1px solid var(--borde); border-radius: 999px; padding: 3px 10px; font-size: .85rem; }
+.negativo, .total.negativo, .indicador .valor.negativo { color: var(--rojo); }
 
 /* ---------- Cargar ---------- */
 
