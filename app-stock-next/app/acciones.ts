@@ -15,8 +15,10 @@ import { puedeAnularRemitos, puedeModificarRemitos } from '@/lib/permisos';
 import { usuarioActual } from '@/lib/sesion';
 import {
   DEPOSITOS,
+  depositosEnTexto,
   LUGARES_A_ESPECIFICAR,
   lugaresDelTipo,
+  NOMBRES_VIEJOS,
   numeroRemito,
   TAMANO_A_ESPECIFICAR,
   type ReglaLugar,
@@ -65,7 +67,8 @@ function revisarLugar(
   detalle: unknown,
   cuit: unknown,
 ): { lugar: string; detalle: string; cuit: string } | string {
-  const l = String(lugar ?? '');
+  const dicho = String(lugar ?? '');
+  const l = NOMBRES_VIEJOS[dicho] ?? dicho; // un nombre viejo de depósito (ej. "Goya") se acepta como el nuevo
   if (!regla) return { lugar: '', detalle: '', cuit: '' };
   if (!l) return regla.obligatorio ? `Elegí el ${regla.titulo.toLowerCase()}.` : { lugar: '', detalle: '', cuit: '' };
   if (!regla.opciones.includes(l)) return `"${l}" no es una opción válida para ${regla.titulo.toLowerCase()}.`;
@@ -100,7 +103,7 @@ async function revisarRemito(remito: RemitoEnviado, responsable: string): Promis
   }
   // Si ni la partida ni la llegada son depósitos, el movimiento no cambiaría ningún stock.
   if (tipo === 'Movimiento' && !DEPOSITOS.includes(procedencia.lugar) && !DEPOSITOS.includes(destino.lugar)) {
-    return 'El punto de partida o el de llegada tiene que ser un depósito (Goya, Pilar o Benavidez).';
+    return `El punto de partida o el de llegada tiene que ser un depósito (${depositosEnTexto()}).`;
   }
 
   const { especies, presentaciones, tamanos } = await leerCatalogo();

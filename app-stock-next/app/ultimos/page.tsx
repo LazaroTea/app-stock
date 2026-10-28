@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 const CANTIDAD = 50;
 
-// De dónde a dónde: "Goya → Pilar", "Proveedor (Vivero X) → Goya". En un ajuste, el depósito.
+// De dónde a dónde: "Goya Vivero → Pilar", "Proveedor (Vivero X) → Goya Vivero". En un ajuste, el depósito.
 function recorrido(r: RemitoResumen): string {
   if (r.tipo === 'Ajuste') return r.destino;
   const partida = r.procedencia ? etiquetaLugar(r.procedencia, r.procedenciaDetalle) : '';

@@ -4,7 +4,7 @@ Versión paralela de `../app-stock` hecha con **Next.js**, una herramienta para 
 Hace lo mismo que la versión de Google (Stock, Cargar, Últimos), pero se publica en **Vercel** y guarda
 los datos en una base de datos **Neon** (Postgres) en internet.
 
-El stock se lleva **por depósito** (Benavidez, Pilar y Goya) y, dentro de cada uno, por **especie**,
+El stock se lleva **por depósito** (Benavidez, Pilar, Goya Vivero y Monteflorido) y, dentro de cada uno, por **especie**,
 **presentación** (Envasado, Maceta o Raíz desnuda) y **tamaño** (la lista de la planilla de cotizaciones del
 vivero: 6-8, 12-14, 3Lts, Ejemplar, etc.). El stock se mueve con **Movimientos** (de un punto de partida a
 uno de llegada) y **Ajustes**. Palma Sola, proveedores y clientes no llevan stock: son puntos de partida o de
@@ -97,7 +97,7 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 - **Stock:** arriba se elige qué ver: **Todos** (los tres depósitos sumados) o un depósito. Es una **tabla angosta**, una fila por
   especie: código, nombre y total. **Tocando una fila se abre el detalle** (y tocándola de nuevo se cierra): el nombre
   científico (discreto) y, **por cada depósito**, su subtotal y debajo la lista de presentaciones y tamaños
-  (ej. "Goya 35: Envasado · 14-16: 10, Envasado · 16-18: 10…"). Con "Todos" se ven los tres depósitos (los que tienen
+  (ej. "Goya Vivero 35: Envasado · 14-16: 10, Envasado · 16-18: 10…"). Con "Todos" se ven los depósitos (los que tienen
   stock); eligiendo un depósito arriba, solo ese. Los números en negativo salen en rojo, y las especies bajo el
   mínimo tienen una marca roja a la izquierda. La región (procedencia) ya no se muestra acá (sigue sirviendo para
   el filtro "Región").
@@ -111,11 +111,11 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 
      | Tipo | Punto de partida | Punto de llegada | Qué hace con el stock |
      |---|---|---|---|
-     | **Movimiento** | Palma Sola, Goya, Pilar, Benavidez o Proveedor | Palma Sola, Goya, Pilar, Benavidez, Proveedor o Cliente | Resta en el depósito de partida y suma en el de llegada |
-     | **Ajuste** | — | Depósito (Goya, Pilar o Benavidez) | Suma o resta (cantidad con signo) |
+     | **Movimiento** | Palma Sola, Goya Vivero, Monteflorido, Pilar, Benavidez o Proveedor | Palma Sola, Goya Vivero, Monteflorido, Pilar, Benavidez, Proveedor o Cliente | Resta en el depósito de partida y suma en el de llegada |
+     | **Ajuste** | — | Depósito (Goya Vivero, Monteflorido, Pilar o Benavidez) | Suma o resta (cantidad con signo) |
 
-     Solo Goya, Pilar y Benavidez llevan stock. Por ejemplo: Proveedor → Goya suma en Goya; Goya → Pilar resta
-     en Goya y suma en Pilar; Pilar → Cliente o Pilar → Palma Sola resta en Pilar. El punto de partida o el de
+     Solo **Goya Vivero, Monteflorido, Pilar y Benavidez** llevan stock. Por ejemplo: Proveedor → Goya Vivero suma en
+     Goya Vivero; Goya Vivero → Monteflorido resta en uno y suma en el otro; Pilar → Cliente o Pilar → Palma Sola resta en Pilar. El punto de partida o el de
      llegada tiene que ser un depósito, y no pueden ser el mismo depósito.
 
      Si se elige Proveedor o Cliente, aparecen dos renglones: el **CUIT** (opcional) y **¿Cuál?** (el nombre).
@@ -155,7 +155,7 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 - **Quién puede modificar o anular:** solo los administradores. Se decide en `lib/permisos.ts` (la pantalla
   oculta los botones y el servidor rechaza el pedido aunque alguien lo intente igual).
 - **Últimos:** una fila por **remito** (los 50 más nuevos), sin el desglose de las plantas: fecha, número, tipo,
-  recorrido (ej. "Goya → Pilar"; en un ajuste, "Ajuste en Goya"), total de plantas y cantidad de
+  recorrido (ej. "Goya Vivero → Pilar"; en un ajuste, "Ajuste en Goya Vivero"), total de plantas y cantidad de
   líneas, y responsable. Tocando el remito se abre con todo el detalle, para verlo, imprimirlo, modificarlo o
   anularlo. Los anulados se ven tachados.
 

@@ -3,14 +3,24 @@
 import { formatearCuit } from './cuit';
 import type { Especie, Stock, StockPorDeposito, TipoMovimiento } from './tipos';
 
-/** Los depósitos de Native: cada uno lleva su propio stock. */
-export const DEPOSITOS = ['Benavidez', 'Pilar', 'Goya'];
+/**
+ * Los depósitos de Native: cada uno lleva su propio stock.
+ * 2026-10-28: "Goya" pasó a llamarse "Goya Vivero" y se sumó "Monteflorido". Para agregar o renombrar otro, se cambia
+ * acá (y, si se renombra, se actualizan los datos ya guardados: ver el cambio de nombre en crearTablas, lib/almacen.ts).
+ */
+export const DEPOSITOS = ['Benavidez', 'Pilar', 'Goya Vivero', 'Monteflorido'];
+/** Nombres viejos de un depósito, que se siguen aceptando (por ejemplo, remitos sin subir cargados antes del cambio). */
+export const NOMBRES_VIEJOS: Record<string, string> = { Goya: 'Goya Vivero' };
+/** "Goya Vivero, Pilar, Benavidez o Monteflorido", para los mensajes. */
+export function depositosEnTexto(): string {
+  return `${DEPOSITOS.slice(0, -1).join(', ')} o ${DEPOSITOS[DEPOSITOS.length - 1]}`;
+}
 /**
  * Puntos de partida y de llegada de un movimiento. Palma Sola, Proveedor y Cliente no llevan stock:
  * solo cambia el stock de los depósitos (ver efectos).
  */
-export const PARTIDAS = ['Palma Sola', 'Goya', 'Pilar', 'Benavidez', 'Proveedor'];
-export const LLEGADAS = ['Palma Sola', 'Goya', 'Pilar', 'Benavidez', 'Proveedor', 'Cliente'];
+export const PARTIDAS = ['Palma Sola', 'Goya Vivero', 'Monteflorido', 'Pilar', 'Benavidez', 'Proveedor'];
+export const LLEGADAS = ['Palma Sola', 'Goya Vivero', 'Monteflorido', 'Pilar', 'Benavidez', 'Proveedor', 'Cliente'];
 /** Con estos hay que escribir cuál (nombre del proveedor o del cliente). */
 export const LUGARES_A_ESPECIFICAR = ['Proveedor', 'Cliente'];
 
@@ -118,7 +128,7 @@ export function buscarEspecie(especies: Especie[], texto: string): Especie | und
   return especies.find(e => etiquetaEspecie(e).toLowerCase() === t || e.codigo.toLowerCase() === t);
 }
 
-// "Proveedor" + "Vivero El Ceibo" -> "Proveedor (Vivero El Ceibo)"; "Goya" -> "Goya".
+// "Proveedor" + "Vivero El Ceibo" -> "Proveedor (Vivero El Ceibo)"; "Goya Vivero" -> "Goya Vivero".
 // Con CUIT: "Cliente (Vivero X · CUIT 30-71792140-9)".
 export function etiquetaLugar(lugar: string, detalle: string, cuit = ''): string {
   if (!LUGARES_A_ESPECIFICAR.includes(lugar) || !detalle) return lugar;

@@ -203,6 +203,11 @@ async function crearTablas() {
       tamano_detalle text NOT NULL DEFAULT '',
       cantidad integer NOT NULL
     )`,
+    // Cambio de nombre del 2026-10-28: el depósito "Goya" pasó a llamarse "Goya Vivero". Se actualiza todo lo ya guardado
+    // (los movimientos y los puntos de partida y llegada de los remitos). Si ya se hizo, no encuentra nada que cambiar.
+    sql`UPDATE movimientos SET deposito = 'Goya Vivero' WHERE deposito = 'Goya'`,
+    sql`UPDATE remitos SET procedencia = 'Goya Vivero' WHERE procedencia = 'Goya'`,
+    sql`UPDATE remitos SET destino = 'Goya Vivero' WHERE destino = 'Goya'`,
     sql`INSERT INTO especies (codigo, comun, cientifico, region, grupo, minimo)
       SELECT * FROM json_to_recordset(${JSON.stringify(ESPECIES)}::json)
         AS x (codigo text, comun text, cientifico text, region text, grupo text, minimo integer)

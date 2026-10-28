@@ -18,6 +18,7 @@ import {
   buscarEspecie,
   claveStock,
   DEPOSITOS,
+  depositosEnTexto,
   efectos,
   etiquetaEspecie,
   etiquetaLugar,
@@ -306,7 +307,7 @@ export default function Formulario({ especies, presentaciones, tamanos, stock, s
               : DEPOSITOS.includes(procedencia) && procedencia === destino
               ? 'El punto de partida y el de llegada tienen que ser distintos.'
               : tipo === 'Movimiento' && procedencia && destino && depositos.length === 0
-                ? 'El punto de partida o el de llegada tiene que ser un depósito (Goya, Pilar o Benavidez).'
+                ? `El punto de partida o el de llegada tiene que ser un depósito (${depositosEnTexto()}).`
                 : '';
 
   return (

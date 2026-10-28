@@ -783,3 +783,32 @@ borraron los estilos que quedaron sin uso (chips, línea de depósitos).
 
 **Probado** con un usuario de prueba (ya borrado) y capturas con Chrome en celu y compu: Aguaribay (Pilar y Goya
 con sus presentaciones) y Olivo (frutal, solo Goya) se ven bien, sin desbordes. Compila sin errores.
+
+## 2026-10-28: depósito Monteflorido y Goya pasa a llamarse Goya Vivero
+
+**Pedido:** sumar un depósito llamado Monteflorido y cambiarle el nombre a Goya por **Goya Vivero**; ambos en
+categorías similares.
+
+**Qué se hizo**
+- **Depósitos:** ahora son **Benavidez, Pilar, Goya Vivero y Monteflorido** (`DEPOSITOS` en `lib/stock.ts`).
+  Monteflorido se comporta igual que los otros depósitos: lleva su propio stock y es punto de partida y de llegada
+  de los movimientos y depósito de los ajustes. Aparece como botón en Stock.
+- **Cambio de nombre de lo ya guardado:** al arrancar, la app pasa de "Goya" a "Goya Vivero" todos los movimientos
+  y los puntos de partida y llegada de los remitos (`crearTablas` en `lib/almacen.ts`; si ya se hizo, no encuentra
+  nada que cambiar). Se aplicó a la base real: 5 movimientos y 2 remitos; los números no cambiaron (Benavidez 3,
+  Goya Vivero 5, Pilar 2) y los remitos viejos ahora dicen "Goya Vivero".
+- **Remitos sin subir cargados antes del cambio** (guardados en un celu con el nombre "Goya"): el servidor acepta el
+  nombre viejo como "Goya Vivero" (`NOMBRES_VIEJOS`), así que no se pierden.
+- Los mensajes de error arman la lista de depósitos a partir de `DEPOSITOS`, así que no hay que tocarlos al agregar
+  otro. La dirección de Native del remito (Goya, Corrientes) no es el depósito y no cambia.
+
+**Probado** contra la base real con un usuario de prueba y remitos de prueba (ya borrados): botones de Stock
+(Todos, Benavidez, Pilar, Goya Vivero, Monteflorido); el stock de Goya aparece en Goya Vivero y Monteflorido arranca
+vacío; las listas de Cargar traen los dos depósitos nuevos y no "Goya" suelto; un ajuste en Monteflorido (+2) y un
+movimiento Goya Vivero → Monteflorido (−2 / +2) suman bien; un remito pendiente con el nombre viejo se subió como
+"Goya Vivero"; no quedaron movimientos con "Goya". El cambio de nombre se probó antes con una vuelta atrás. Compila
+sin errores.
+
+**Ojo:** el cambio de nombre en la base ya está hecho, pero **la app publicada usa el nombre viejo hasta que se suba
+este cambio**: mientras tanto, la solapa "Goya" de la versión publicada no muestra el stock (el total sí cuenta) y lo
+que se cargue en "Goya" ahí se corrige solo cuando se publique la versión nueva. Conviene subirlo enseguida.
