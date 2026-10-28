@@ -53,6 +53,7 @@ export const ESPECIES: Especie[] = [
   arbol('QBL', 'Quebracho blanco', 'Aspidosperma quebracho-blanco', 'Chaco, Monte'),
   arbol('QCO', 'Quebracho colorado chaqueño', 'Schinopsis balansae', 'Chaco'),
   arbol('SAU', 'Sauce criollo', 'Salix humboldtiana', 'Delta y ribera'),
+  arbol('SLL', 'Sauce llorón', 'Salix babylonica', 'Exótica'),
   arbol('SDT', 'Sombra de toro', 'Jodina rhombifolia', 'Espinal, Chaco'),
   arbol('TAL', 'Tala', 'Celtis tala', 'Espinal, Pampa, Chaco'),
   arbol('TIM', 'Timbó', 'Enterolobium contortisiliquum', 'Chaco, Selva paranaense, Yungas'),

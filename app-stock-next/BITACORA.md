@@ -683,3 +683,17 @@ barra queda con tres pestañas (Stock, Cargar, Últimos), lo que también ordena
 **Probado:** con un usuario administrador de prueba (ya borrado): la barra tiene 3 pestañas y el menú muestra
 Usuarios, Mi clave y Salir. Compila sin errores. No se pudo ver la captura en tamaño celu (el navegador integrado
 se trabó); el cambio de tamaño no toca estilos nuevos.
+
+## 2026-10-28: se agrega Sauce llorón
+
+**Pedido:** agregar al listado de plantas el sauce llorón.
+
+**Qué se hizo:** se sumó **Sauce llorón** (*Salix babylonica*), código `SLL`, grupo Árbol, región **Exótica** (no es
+nativo), sin stock mínimo, en `lib/especies.ts` y en la base (con `npm.cmd run cargar-especies`, que solo agrega lo
+que falta). El listado pasó de 179 a **180** especies; se actualizó el README. No se tocó ningún dato existente.
+
+**Notas**
+- El nombre científico y la región los elegí yo (el sauce llorón común es *Salix babylonica*; en muchos viveros
+  también se vende el híbrido *Salix × sepulcralis*). Si el vivero vende otro, se corrige el nombre científico
+  desde el panel de Neon (tabla `especies`).
+- El código `SLL` no se puede cambiar una vez que la especie tiene movimientos.

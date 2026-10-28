@@ -10,7 +10,7 @@ vivero: 6-8, 12-14, 3Lts, Ejemplar, etc.). El stock se mueve con **Movimientos**
 uno de llegada) y **Ajustes**. Palma Sola, proveedores y clientes no llevan stock: son puntos de partida o de
 llegada.
 
-> **El stock arranca en cero** (2026-10-23). Las especies son reales: 179 en total (ver `lib/especies.ts`):
+> **El stock arranca en cero** (2026-10-23). Las especies son reales: 180 en total (ver `lib/especies.ts`):
 > 130 árboles y arbustos nativos de Argentina, 21 palmeras (7 nativas, 13 exóticas y la cica) y 28 frutales
 > (olivo, cítricos, carozo, pepita y otros). No es un listado oficial: SENASA no publica uno de especies nativas.
 >
@@ -190,7 +190,7 @@ Los colores están todos juntos al principio de `app/globals.css`: para cambiar 
 | `certificados/` | La clave privada y el pedido de certificado para ARCA (solo en tu compu, no están en GitHub). |
 | `lib/stock.ts` | Reglas del stock (las salidas restan, etc.) y ayudas para la pantalla. |
 | `lib/almacen.ts` | Lee y guarda los datos en la base Neon. Crea las tablas la primera vez. Tiene las listas iniciales de presentaciones y tamaños. |
-| `lib/especies.ts` | El listado de las 179 especies (árboles nativos, palmeras y frutales), con su región y grupo. |
+| `lib/especies.ts` | El listado de las 180 especies (árboles nativos, palmeras y frutales), con su región y grupo. |
 | `lib/tipos.ts` | La forma de los datos (especie, movimiento). |
 | `scripts/cargar-especies.ts` | Agrega a la base las especies del listado que falten. |
 | `.env.local` | La conexión a la base (solo en tu compu, no está en GitHub). |
