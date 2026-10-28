@@ -187,7 +187,7 @@ export const ESPECIES: Especie[] = [
   // (Fraxinus pennsylvanica, cultivado y naturalizado; Achinelli y Delucchi 1999 concluyeron que el "fresno
   // americano" del país es esta especie y no F. americana), el europeo (F. excelsior, también en su forma dorada
   // 'Aurea', muy plantada en Buenos Aires) y el de Arizona (F. velutina, que algunos autores tratan como
-  // subespecie de F. pennsylvanica). No se agregaron otros fresnos (F. angustifolia, F. ornus, F. uhdei...) porque
+  // subespecie de F. pennsylvanica). No se agregaron otros fresnos (F. ornus, F. uhdei...) porque
   // no hay registros en Argentina.
   arbol('SLL', 'Sauce llorón', 'Salix babylonica', 'Exótica'),
   // "Fresno rojo" y "fresno verde" son otros nombres de esta misma especie (Fraxinus pennsylvanica).
@@ -195,6 +195,9 @@ export const ESPECIES: Especie[] = [
   arbol('FRZ', 'Fresno de Arizona', 'Fraxinus velutina', 'Exótica'),
   arbol('FRD', 'Fresno dorado', "Fraxinus excelsior 'Aurea'", 'Exótica'),
   arbol('FRE', 'Fresno europeo', 'Fraxinus excelsior', 'Exótica'),
+  // Raywood: variedad de otoño rojo de Fraxinus angustifolia (a veces vendida como F. oxycarpa 'Raywood'). La agregó
+  // el vivero (2026-10-28): no tiene registros en la bibliografía argentina consultada.
+  arbol('FRR', 'Fresno Raywood', "Fraxinus angustifolia 'Raywood'", 'Exótica'),
 
   // Palmeras nativas (además de Pindó, Caranday y Palmera yatay, que están más arriba)
   palmera('BPA', 'Yatay poñí', 'Butia paraguayensis', 'Selva paranaense'),

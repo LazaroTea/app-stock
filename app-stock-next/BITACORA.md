@@ -738,3 +738,15 @@ base (la especie no tenía movimientos, así que no afectó nada).
 
 **Si el vivero vende otro "fresno rojo"** (por ejemplo una variedad distinta de otoño colorado), se agrega como
 especie aparte con su nombre científico o cultivar.
+
+## 2026-10-28: se agrega el fresno Raywood
+
+**Pedido:** sumar el fresno Raywood.
+
+**Qué se hizo:** se agregó **Fresno Raywood** (`FRR`), *Fraxinus angustifolia* 'Raywood' (variedad de hoja que se pone
+roja en otoño; a veces se vende como *F. oxycarpa* 'Raywood'). Árbol, región Exótica, sin stock mínimo. El listado
+pasó de 184 a **185** especies. Se cargó en la base con `cargar-especies`.
+
+**Nota:** antes no se había incluido *F. angustifolia* porque no encontré registros en la bibliografía argentina;
+se agrega ahora porque el vivero la trabaja. Si el nombre científico que usan es otro, se corrige en la tabla
+`especies` de Neon.
