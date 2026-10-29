@@ -165,6 +165,7 @@ export default function ListaStock({ especies, presentaciones, tamanos, stock: p
                           {abierta ? '▾' : '▸'}
                         </span>
                         {e.comun}
+                        <span className="cientifico-fila"> ({e.cientifico})</span>
                       </button>
                     </td>
                     <td className={total < 0 ? 'num negativo' : 'num total-fila'}>{total}</td>
@@ -172,14 +173,13 @@ export default function ListaStock({ especies, presentaciones, tamanos, stock: p
                   {abierta && (
                     <tr className="detalle-especie">
                       <td colSpan={3}>
-                        <div className="cientifico">
-                          {e.cientifico}
-                          {e.grupo !== 'Árbol' && (
+                        {e.grupo !== 'Árbol' && (
+                          <div>
                             <span className="etiqueta" title="Especie priorizada por SENASA (Res. 64/2026)">
                               {e.grupo}
                             </span>
-                          )}
-                        </div>
+                          </div>
+                        )}
                         {bajo && <div className="aviso">Por debajo del mínimo ({e.minimo})</div>}
                         {/* Por depósito, y dentro de cada uno, sus presentaciones y tamaños. */}
                         {porDepositos.length > 0 ? (

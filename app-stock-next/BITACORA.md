@@ -812,3 +812,16 @@ sin errores.
 **Ojo:** el cambio de nombre en la base ya está hecho, pero **la app publicada usa el nombre viejo hasta que se suba
 este cambio**: mientras tanto, la solapa "Goya" de la versión publicada no muestra el stock (el total sí cuenta) y lo
 que se cargue en "Goya" ahí se corrige solo cuando se publique la versión nueva. Conviene subirlo enseguida.
+
+## 2026-10-29: el nombre científico va al lado del nombre
+
+**Pedido:** que el nombre científico aparezca siempre, entre paréntesis y un poco más chico, al lado del nombre
+común, y no dentro del desplegable.
+
+**Qué se hizo**
+- En la fila de cada especie de Stock, después del nombre común se ve el científico: "Sauce criollo (Salix
+  humboldtiana)", en cursiva, gris y más chico (`.cientifico-fila` en `app/globals.css`, `app/ListaStock.tsx`).
+- El desplegable ya no repite el científico: queda solo la etiqueta de grupo (Palmera o Frutal) si corresponde, el
+  aviso de bajo mínimo y los depósitos con sus presentaciones.
+
+**Probado:** el código compila sin errores de tipos; todavía no se miró en pantalla ni se subió a GitHub.

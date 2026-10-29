@@ -189,6 +189,7 @@ button.indicador { cursor: pointer; }
 .tabla-stock tbody:last-child { border-bottom: 0; }
 .tabla-stock td { border-bottom: 0; padding: 10px 8px; }
 .fila-especie { cursor: pointer; }
+.cientifico-fila { font-style: italic; font-weight: 400; font-size: .8rem; color: var(--gris); }
 .fila-especie:hover { background: var(--fondo); }
 .tabla-stock tbody.bajo .fila-especie td:first-child { box-shadow: inset 4px 0 0 var(--rojo); }
 .tabla-stock td.cod { width: 1%; white-space: nowrap; font-family: var(--fuente-titulos), monospace; font-size: .8rem; color: var(--gris); }
